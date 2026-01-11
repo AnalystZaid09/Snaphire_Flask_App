@@ -33,22 +33,15 @@ except ImportError:
 
 def get_mongo_client():
     """
-    Establishes a connection to MongoDB using the URI from environment variables.
+    Wrapper for centralized MongoDB client from common.mongo.
     """
-    if not MONGO_AVAILABLE:
-        return None, "pymongo not installed"
-    
-    mongo_uri = os.getenv("MONGO_URI")
-    if not mongo_uri:
-        return None, "MONGO_URI not found in .env file."
-    
     try:
-        client = MongoClient(mongo_uri)
-        # The ismaster command is cheap and does not require auth.
-        client.admin.command('ismaster')
+        from common.mongo import client, MONGO_CONNECTED
+        if not MONGO_CONNECTED:
+            return None, "MongoDB not connected"
         return client, None
-    except Exception as e:
-        return None, str(e)
+    except ImportError:
+        return None, "common.mongo not found"
 
 def save_reconciliation_report(collection_name, invoice_no, summary_data, line_items_data, metadata=None):
     """
@@ -72,7 +65,7 @@ def save_reconciliation_report(collection_name, invoice_no, summary_data, line_i
     except ImportError:
         pd = None
 
-    db_name = os.getenv("MONGO_DB_NAME", "reconciliation_db")
+    db_name = os.getenv("MONGO_DB_NAME", "report_app")
     db = client[db_name]
     collection = db[collection_name]
 
