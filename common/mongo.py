@@ -8,22 +8,37 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv()
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+# Prioritize environment variables, then fall back for local development
+MONGO_URI = os.getenv("MONGO_URI")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "report_app")
+
+# If MONGO_URI is missing, it will default to localhost (only if not explicitly set)
+if not MONGO_URI:
+    MONGO_URI = "mongodb://localhost:27017"
+    print("⚠️  Warning: MONGO_URI environment variable not found. Defaulting to localhost:27017")
+else:
+    # Basic check to ensure it doesn't contain a placeholder
+    if "<db_password>" in MONGO_URI:
+        print("❌ Error: MONGO_URI contains <db_password> placeholder. Please replace it with your actual password.")
 
 # Initialize MongoDB client
 try:
-    client = MongoClient(MONGO_URI)
+    if not MONGO_URI:
+        raise ValueError("MONGO_URI is empty")
+        
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     # Test connection
     client.admin.command('ping')
     db = client[MONGO_DB_NAME]
     MONGO_CONNECTED = True
+    print(f"✅ Connected to MongoDB: {MONGO_DB_NAME}")
 except Exception as e:
-    print(f"MongoDB connection warning: {e}")
+    print(f"❌ MongoDB connection error: {e}")
     # Fallback - create client that will try to connect later
-    client = MongoClient(MONGO_URI)
+    client = MongoClient("mongodb://localhost:27017")
     db = client[MONGO_DB_NAME]
     MONGO_CONNECTED = False
 
