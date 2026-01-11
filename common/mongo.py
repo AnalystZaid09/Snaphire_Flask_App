@@ -24,26 +24,32 @@ logger = logging.getLogger(__name__)
 def _get_safe_mongo_uri():
     """Get MongoDB URI from environment and safely encode credentials."""
     uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-    if not uri or "@" not in uri:
+    if not uri or "://" not in uri:
         return uri
     
     try:
-        # Pattern to capture: scheme://user:password@host_and_rest
-        # Supports both mongodb:// and mongodb+srv://
-        match = re.match(r"^(mongodb(?:\+srv)?://)([^:]+):([^@]+)@(.+)$", uri)
-        if match:
-            scheme, user, password, rest = match.groups()
-            # Only encode if it doesn't already appear to be encoded (common check)
+        # Split scheme (mongodb:// or mongodb+srv://)
+        scheme_part, rest = uri.split("://", 1)
+        scheme = scheme_part + "://"
+        
+        # Check if credentials exist (before the last '@')
+        if "@" not in rest:
+            return uri
+            
+        creds_part, host_part = rest.rsplit("@", 1)
+        
+        # Handle user:password
+        if ":" in creds_part:
+            user, password = creds_part.split(":", 1)
+            # Only encode if it doesn't already appear to be encoded (contains %)
             safe_user = urllib.parse.quote_plus(user) if "%" not in user else user
             safe_password = urllib.parse.quote_plus(password) if "%" not in password else password
-            return f"{scheme}{safe_user}:{safe_password}@{rest}"
-        
-        # Pattern for user without password: scheme://user@host_and_rest
-        match = re.match(r"^(mongodb(?:\+srv)?://)([^@]+)@(.+)$", uri)
-        if match:
-            scheme, user, rest = match.groups()
-            safe_user = urllib.parse.quote_plus(user) if "%" not in user else user
-            return f"{scheme}{safe_user}@{rest}"
+            return f"{scheme}{safe_user}:{safe_password}@{host_part}"
+        else:
+            # Handle user only
+            safe_user = urllib.parse.quote_plus(creds_part) if "%" not in creds_part else creds_part
+            return f"{scheme}{safe_user}@{host_part}"
+            
     except Exception as e:
         logger.warning(f"Could not safe-encode MongoDB URI: {e}")
         
