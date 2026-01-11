@@ -13,6 +13,7 @@ import logging
 
 import urllib.parse
 import re
+import certifi
 
 # Load environment variables (override=True ensures .env wins)
 load_dotenv(override=True)
@@ -105,7 +106,8 @@ def init_mongo_connection(max_retries=3):
                 maxPoolSize=MAX_POOL_SIZE,
                 minPoolSize=MIN_POOL_SIZE,
                 retryWrites=True,
-                w='majority'
+                w='majority',
+                tlsCAFile=certifi.where()
             )
             # Verify connection
             client.admin.command('ping')
