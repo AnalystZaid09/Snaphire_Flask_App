@@ -2,8 +2,14 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from io import BytesIO
-from mongo_utils import save_reconciliation_report
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "flipkart"
 
 # Page configuration
 st.set_page_config(
@@ -262,8 +268,7 @@ else:
         "🗺️ State Analysis",
         "📊 State-Brand Analysis"
     ])
-    
-    from common.ui_utils import download_report
+
 
     # Tab 1: Sales Report
     with tab1:
@@ -285,12 +290,11 @@ else:
         st.divider()
         
         # Download button using centralized utility
-        download_report(
+        download_module_report(
             df=st.session_state.sales_report,
-            base_filename="sales_report_with_ris",
-            button_label="📥 Download Sales Report",
-            module_name="flipkart",
+            module_name=MODULE_NAME,
             report_name="Sales Report with RIS Status",
+            button_label="📥 Download Sales Report",
             key="ris_sales_report"
         )
         
@@ -320,12 +324,11 @@ else:
         st.divider()
         
         # Download button using centralized utility
-        download_report(
+        download_module_report(
             df=brand_pivot.reset_index(),
-            base_filename="brand_ris_analysis",
-            button_label="📥 Download Brand Analysis",
-            module_name="flipkart",
+            module_name=MODULE_NAME,
             report_name="Brand RIS Analysis",
+            button_label="📥 Download Brand Analysis",
             key="ris_brand_analysis"
         )
         
@@ -349,12 +352,11 @@ else:
         fsn_pivot = st.session_state.fsn_brand_pivot
         
         # Download button using centralized utility
-        download_report(
+        download_module_report(
             df=fsn_pivot.reset_index(),
-            base_filename="fsn_brand_ris_analysis",
-            button_label="📥 Download FSN-Brand Analysis",
-            module_name="flipkart",
+            module_name=MODULE_NAME,
             report_name="FSN Brand RIS Analysis",
+            button_label="📥 Download FSN-Brand Analysis",
             key="ris_fsn_analysis"
         )
         
@@ -389,12 +391,11 @@ else:
         st.divider()
         
         # Download button using centralized utility
-        download_report(
+        download_module_report(
             df=state_pivot.reset_index(),
-            base_filename="state_ris_analysis",
-            button_label="📥 Download State Analysis",
-            module_name="flipkart",
+            module_name=MODULE_NAME,
             report_name="State RIS Analysis",
+            button_label="📥 Download State Analysis",
             key="ris_state_analysis"
         )
         
@@ -418,12 +419,11 @@ else:
         state_brand_pivot = st.session_state.state_brand_pivot
         
         # Download button using centralized utility
-        download_report(
+        download_module_report(
             df=state_brand_pivot.reset_index(),
-            base_filename="state_brand_ris_analysis",
-            button_label="📥 Download State-Brand Analysis",
-            module_name="flipkart",
+            module_name=MODULE_NAME,
             report_name="State Brand RIS Analysis",
+            button_label="📥 Download State-Brand Analysis",
             key="ris_state_brand_analysis"
         )
         

@@ -7,8 +7,15 @@ from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
 from dotenv import load_dotenv
 import os
-from mongo_utils import save_reconciliation_report
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.mongo import save_reconciliation_report
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "reconciliation"
 
 # Load environment variables
 load_dotenv()
@@ -219,12 +226,12 @@ def perform_reconciliation(pdf_df, excel_df, pdf_details, pdf_filename, excel_fi
     
     excel_data = output.getvalue()
     
-    st.download_button(
-        label="📥 Download Reconciliation Report (Excel)",
-        data=excel_data,
-        file_name=get_download_filename(f"Bajaj_Reconciliation_{pdf_details['Invoice_No']}"),
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True
+    download_module_report(
+        df=comparison_df,
+        module_name=MODULE_NAME,
+        report_name=f"Bajaj Reconciliation {pdf_details['Invoice_No']}",
+        button_label="📥 Download Reconciliation Report",
+        key="dl_bajaj_recon"
     )
     
     # Save to MongoDB

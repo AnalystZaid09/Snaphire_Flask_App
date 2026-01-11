@@ -4,7 +4,14 @@ import zipfile
 import io
 from pathlib import Path
 import base64
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "leakagereconciliation"
 
 # Page configuration
 st.set_page_config(
@@ -378,19 +385,7 @@ def convert_df_to_excel(df):
         df.to_excel(writer, index=False, sheet_name='Sheet1')
     return output.getvalue()
 
-def create_download_button(df, filename, button_text="📥 Download Excel"):
-    """Create a download button for dataframe with timestamped filename"""
-    excel_data = convert_df_to_excel(df)
-    # Add timestamp to filename
-    timestamped_filename = get_download_filename(filename.replace('.xlsx', ''))
-
-    st.download_button(
-        label=button_text,
-        data=excel_data,
-        file_name=timestamped_filename,
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True
-    )
+# Removed create_download_button in favor of download_module_report
 
 
 # Main App
@@ -621,7 +616,7 @@ if process_button:
                     st.success("✅ Data processed successfully!")
                     
                     # Save to MongoDB
-                    from mongo_utils import save_reconciliation_report
+                    from common.mongo import save_reconciliation_report
                     save_reconciliation_report(
                         collection_name="sales_vs_return",
                         invoice_no=f"SALESVSRETURN_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}",
@@ -670,49 +665,97 @@ if st.session_state.processed:
     with tab1:
         st.subheader("Combined Transaction Data")
         st.dataframe(results['combined_df'].head(100), use_container_width=True)
-        create_download_button(results['combined_df'], "combined_data_report.xlsx")
+        download_module_report(
+            df=results['combined_df'],
+            module_name=MODULE_NAME,
+            report_name="Combined Transaction Data",
+            button_label="📥 Download Combined Data",
+            key="sales_vs_return_combined"
+        )
     
     with tab2:
         col1, col2 = st.columns(2)
         with col1:
             st.subheader("Brand Quantity Pivot")
             st.dataframe(results['brand_qty_pivot'], use_container_width=True)
-            create_download_button(results['brand_qty_pivot'], "brand_quantity_pivot.xlsx")
+            download_module_report(
+                df=results['brand_qty_pivot'],
+                module_name=MODULE_NAME,
+                report_name="Brand Quantity Pivot",
+                button_label="📥 Download Brand Pivot",
+                key="sales_vs_return_brand_qty"
+            )
         
         with col2:
             st.subheader("Brand Final Summary (with Returns)")
             st.dataframe(results['brand_final'], use_container_width=True)
-            create_download_button(results['brand_final'], "brand_final_summary.xlsx")
+            download_module_report(
+                df=results['brand_final'],
+                module_name=MODULE_NAME,
+                report_name="Brand Final Summary",
+                button_label="📥 Download Brand Summary",
+                key="sales_vs_return_brand_final"
+            )
     
     with tab3:
         col1, col2 = st.columns(2)
         with col1:
             st.subheader("ASIN Quantity Pivot")
             st.dataframe(results['asin_qty_pivot'], use_container_width=True)
-            create_download_button(results['asin_qty_pivot'], "asin_quantity_pivot.xlsx")
+            download_module_report(
+                df=results['asin_qty_pivot'],
+                module_name=MODULE_NAME,
+                report_name="ASIN Quantity Pivot",
+                button_label="📥 Download ASIN Pivot",
+                key="sales_vs_return_asin_qty"
+            )
         
         with col2:
             if 'asin_final' in results and results['asin_final'] is not None:
                 st.subheader("ASIN Final Summary (with Returns)")
                 st.dataframe(results['asin_final'], use_container_width=True)
-                create_download_button(results['asin_final'], "asin_final_summary.xlsx")
+                download_module_report(
+                    df=results['asin_final'],
+                    module_name=MODULE_NAME,
+                    report_name="ASIN Final Summary",
+                    button_label="📥 Download ASIN Summary",
+                    key="sales_vs_return_asin_final"
+                )
     
     with tab4:
         if results['seller_flex_df'] is not None:
             st.subheader("Raw Seller Flex Data")
             st.dataframe(results['seller_flex_df'].head(100), use_container_width=True)
-            create_download_button(results['seller_flex_df'], "seller_flex_raw_data.xlsx")
+            download_module_report(
+                df=results['seller_flex_df'],
+                module_name=MODULE_NAME,
+                report_name="Raw Seller Flex Data",
+                button_label="📥 Download Raw Seller Flex",
+                key="sales_vs_return_sf_raw"
+            )
             
             col1, col2 = st.columns(2)
             with col1:
                 st.subheader("Seller Flex - Brand Pivot")
                 st.dataframe(results['seller_flex_brand'],use_container_width=True)
-                create_download_button(results['seller_flex_brand'], "seller_flex_brand.xlsx")
+                download_module_report(
+                    df=results['seller_flex_brand'],
+                    module_name=MODULE_NAME,
+                    report_name="Seller Flex Brand Pivot",
+                    button_label="📥 Download SF Brand Pivot",
+                    key="sales_vs_return_sf_brand"
+                )
             
             with col2:
                 st.subheader("Seller Flex - ASIN Pivot")
                 st.dataframe(results['seller_flex_asin'], use_container_width=True)
-                create_download_button(results['seller_flex_asin'], "seller_flex_asin.xlsx")
+                download_module_report(
+                    df=results['seller_flex_asin'],
+                    module_name=MODULE_NAME,
+                    report_name="Seller Flex ASIN Pivot",
+                    button_label="📥 Download SF ASIN Pivot",
+                    key="sales_vs_return_sf_asin"
+                )
         else:
             st.info("No Seller Flex data uploaded")
     
@@ -720,24 +763,48 @@ if st.session_state.processed:
         if results['fba_return_df'] is not None:
             st.subheader("Raw FBA Return Data")
             st.dataframe(results['fba_return_df'].head(100), use_container_width=True)
-            create_download_button(results['fba_return_df'], "fba_return_raw_data.xlsx")
+            download_module_report(
+                df=results['fba_return_df'],
+                module_name=MODULE_NAME,
+                report_name="Raw FBA Return Data",
+                button_label="📥 Download Raw FBA Return",
+                key="sales_vs_return_fba_raw"
+            )
 
             col1, col2 = st.columns(2)
             with col1:
                 st.subheader("FBA Return - Brand Pivot")
                 st.dataframe(results['fba_return_brand'], use_container_width=True)
-                create_download_button(results['fba_return_brand'], "fba_return_brand.xlsx")
+                download_module_report(
+                    df=results['fba_return_brand'],
+                    module_name=MODULE_NAME,
+                    report_name="FBA Return Brand Pivot",
+                    button_label="📥 Download FBA Brand Pivot",
+                    key="sales_vs_return_fba_brand"
+                )
             
             with col2:
                 st.subheader("FBA Return - ASIN Pivot")
                 st.dataframe(results['fba_return_asin'], use_container_width=True)
-                create_download_button(results['fba_return_asin'], "fba_return_asin.xlsx")
+                download_module_report(
+                    df=results['fba_return_asin'],
+                    module_name=MODULE_NAME,
+                    report_name="FBA Return ASIN Pivot",
+                    button_label="📥 Download FBA ASIN Pivot",
+                    key="sales_vs_return_fba_asin"
+                )
             
             # FBA Disposition Pivot Table
             if results.get('fba_disposition_pivot') is not None:
                 st.subheader("FBA Return - ASIN x Disposition Pivot")
                 st.dataframe(results['fba_disposition_pivot'], use_container_width=True)
-                create_download_button(results['fba_disposition_pivot'], "fba_disposition_pivot.xlsx")
+                download_module_report(
+                    df=results['fba_disposition_pivot'],
+                    module_name=MODULE_NAME,
+                    report_name="FBA Return Disposition Pivot",
+                    button_label="📥 Download FBA Disposition Pivot",
+                    key="sales_vs_return_fba_disp"
+                )
         else:
             st.info("No FBA Return data uploaded")
     

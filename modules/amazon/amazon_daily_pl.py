@@ -5,9 +5,15 @@ import io
 import os
 import xlsxwriter
 
-from mongo_utils import save_reconciliation_report
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
 from datetime import datetime
+
+MODULE_NAME = "amazon"
 
 st.set_page_config(page_title="Daily-P&L", page_icon="📊", layout="wide")
 apply_professional_style()
@@ -473,22 +479,13 @@ if transaction_file and pm_file:
         st.header("Processed Data (Filtered)")
         st.dataframe(filtered, use_container_width=True, height=400)
 
-        csv_bytes = filtered.to_csv(index=False).encode('utf-8')
-        csv_bytes = filtered.to_csv(index=False).encode('utf-8')
-        st.download_button("Download Filtered CSV", data=csv_bytes, file_name=get_download_filename(f"{os.path.splitext(orig_name)[0]}_filtered.csv"), mime='text/csv')
-
-        # Save to MongoDB
-        try:
-            with st.spinner("Saving Filtered Data to DB..."):
-                save_reconciliation_report(
-                    collection_name="amazon_daily_pl",
-                    invoice_no=f"DailyPL_{datetime.now().strftime('%Y%m%d%H%M')}",
-                    summary_data=pd.DataFrame([{"Total Sales": total_sales, "Total Profit": total_profit}]),
-                    line_items_data=filtered,
-                    metadata={"type": "filtered_view", "original_file": orig_name}
-                )
-        except Exception as e:
-            pass
+        download_module_report(
+            df=filtered,
+            module_name=MODULE_NAME,
+            report_name="Daily PL Filtered",
+            button_label="📥 Download Filtered CSV",
+            key="dl_daily_pl_csv"
+        )
 
         # ---------- Styled Excel builder (exports FILTERED dataframe) ----------
         def _xl_col_letter(n):

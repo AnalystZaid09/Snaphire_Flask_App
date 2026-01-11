@@ -2,7 +2,14 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import io
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "leakagereconciliation"
 
 st.set_page_config(page_title="Amazon Returns Analysis", page_icon="📦", layout="wide")
 apply_professional_style()
@@ -237,15 +244,16 @@ if returns_file and reimb_file and replacement_file:
                 with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                     returns_final.to_excel(writer, sheet_name='Final Returns', index=False)
                 
-                st.download_button(
-                    label="📥 Download Final Report (Excel)",
-                    data=buffer.getvalue(),
-                    file_name=get_download_filename("Final_Returns_Report_Replacement_NA"),
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                download_module_report(
+                    df=returns_final,
+                    module_name=MODULE_NAME,
+                    report_name="Final Returns Report",
+                    button_label="📥 Download Final Report (Excel)",
+                    key="amazon_returns_final"
                 )
                 
                 # Save to MongoDB
-                from mongo_utils import save_reconciliation_report
+                from common.mongo import save_reconciliation_report
                 save_reconciliation_report(
                     collection_name="amazon_returns_analysis",
                     invoice_no=f"RETURNS_{datetime.today().strftime('%Y%m%d_%H%M%S')}",

@@ -9,8 +9,15 @@ from fuzzywuzzy import fuzz
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
-from mongo_utils import save_reconciliation_report
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.mongo import save_reconciliation_report
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "reconciliation"
 
 # Load environment variables
 load_dotenv()

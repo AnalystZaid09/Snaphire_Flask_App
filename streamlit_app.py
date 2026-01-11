@@ -11,21 +11,26 @@ st.set_page_config(
     page_title="IBI Tool",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
-# Hide Streamlit UI elements when embedded
+# Hide Streamlit UI elements when embedded (keep sidebar visible for file uploads)
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     .stDeployButton {display: none;}
-    /* Sidebar kept visible for file uploaders in modules */
+    /* Keep sidebar visible for file uploaders */
     .block-container {
         padding-top: 1rem !important;
         padding-left: 2rem !important;
         padding-right: 2rem !important;
+    }
+    /* Compact sidebar styling */
+    [data-testid="stSidebar"] {
+        min-width: 280px;
+        max-width: 350px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -42,6 +47,10 @@ def load_module(file_path, module_dir):
     if module_dir not in sys.path:
         sys.path.insert(0, module_dir)
     
+    # Patch st.set_page_config to prevent "can only be called once" error
+    original_set_page_config = st.set_page_config
+    st.set_page_config = lambda *args, **kwargs: None
+    
     spec = importlib.util.spec_from_file_location("dynamic_module", file_path)
     module = importlib.util.module_from_spec(spec)
     try:
@@ -49,6 +58,8 @@ def load_module(file_path, module_dir):
     except Exception as e:
         st.error(f"Error loading module: {str(e)}")
     finally:
+        # Restore original function
+        st.set_page_config = original_set_page_config
         if module_dir in sys.path:
             sys.path.remove(module_dir)
 

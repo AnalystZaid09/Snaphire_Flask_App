@@ -4,7 +4,14 @@ import zipfile
 from pathlib import Path
 import io
 import calendar
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "leakagereconciliation"
 
 st.set_page_config(page_title="Sales Data Analysis", layout="wide", initial_sidebar_state="expanded")
 apply_professional_style()
@@ -345,12 +352,12 @@ if zip_files and pm_file:
         st.dataframe(brand_pivot, use_container_width=True, height=600)
         
         # Download button
-        csv = brand_pivot.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download Brand Analysis CSV",
-            data=csv,
-            file_name=get_download_filename(f"brand_analysis_{time_period}", "csv"),
-            mime="text/csv",
+        download_module_report(
+            df=brand_pivot,
+            module_name=MODULE_NAME,
+            report_name=f"Brand Analysis ({time_period})",
+            button_label="📥 Download Brand Analysis",
+            key=f"year_to_this_brand_{time_period.lower()}"
         )
     
     with tab3:
@@ -380,12 +387,12 @@ if zip_files and pm_file:
         st.dataframe(asin_pivot, use_container_width=True, height=600)
         
         # Download button
-        csv = asin_pivot.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download ASIN Analysis CSV",
-            data=csv,
-            file_name=get_download_filename(f"asin_analysis_{time_period}", "csv"),
-            mime="text/csv",
+        download_module_report(
+            df=asin_pivot,
+            module_name=MODULE_NAME,
+            report_name=f"ASIN Analysis ({time_period})",
+            button_label="📥 Download ASIN Analysis",
+            key=f"year_to_this_asin_{time_period.lower()}"
         )
     
     with tab4:
@@ -407,12 +414,12 @@ if zip_files and pm_file:
             st.dataframe(display_df, use_container_width=True, height=600)
             
             # Download button for raw data
-            csv = display_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Download Filtered Data CSV",
-                data=csv,
-                file_name=get_download_filename(f"filtered_data_{time_period}", "csv"),
-                mime="text/csv",
+            download_module_report(
+                df=display_df,
+                module_name=MODULE_NAME,
+                report_name=f"Filtered Data ({time_period})",
+                button_label="📥 Download Filtered Data",
+                key=f"year_to_this_filtered_{time_period.lower()}"
             )
         else:
             st.warning("Please select at least one column to display")

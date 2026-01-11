@@ -3,12 +3,19 @@ import pandas as pd
 import re
 import os
 import io
-from mongo_utils import save_reconciliation_report
+from common.mongo import save_reconciliation_report
 from dotenv import load_dotenv
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "reconciliation"
 
 # --- 1. Load Hidden Credentials ---
 load_dotenv()

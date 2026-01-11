@@ -7,24 +7,15 @@ warnings.filterwarnings("ignore", message="Workbook contains no default style*")
 
 import io
 
-from mongo_utils import save_reconciliation_report
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
 
-def download_excel(df, filename, label):
-    """Download Excel with timestamped filename"""
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-        df.to_excel(writer, index=True)  # ✅ MultiIndex safe
-    
-    # Add timestamp to filename
-    timestamped_filename = get_download_filename(filename.replace('.xlsx', ''))
-    
-    st.download_button(
-        label=label,
-        data=buffer.getvalue(),
-        file_name=timestamped_filename,
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+# Module name for MongoDB collection
+MODULE_NAME = "flipkart"
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(page_title="Flipkart Sales Analysis", layout="wide")
@@ -145,15 +136,11 @@ if generate:
 
             st.session_state.flip_results = final_df
             st.success("✅ Analysis generated successfully!")
-            
-            # Auto-log raw data to MongoDB
-            from common.ui_utils import auto_log_reports
-            auto_log_reports({"Raw Data": final_df}, "flipkart")
 
         except Exception as e:
             st.error(f"❌ Error: {e}")
 
-if st.session_state.flip_results:
+if st.session_state.flip_results is not None:
     final_df = st.session_state.flip_results
     
     # ---------- METRICS ----------
@@ -165,7 +152,7 @@ if st.session_state.flip_results:
     m4.metric("Managers", final_df["Manager"].nunique())
 
     # ---------- TABS ----------
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7,tab8 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "📊 Brand Analysis",
         "👥 Manager Analysis",
         "📋 Raw Data",
@@ -175,8 +162,6 @@ if st.session_state.flip_results:
         "📌 Brand Pivot",
         "📌 Brand Manager Pivot"
     ])
-
-    from common.ui_utils import download_report
 
     # ---------- TAB 1 (BRAND + GRAND TOTAL) ----------
     with tab1:
@@ -198,7 +183,13 @@ if st.session_state.flip_results:
         pivot.loc["Grand Total"] = pivot.sum(numeric_only=True)
 
         st.dataframe(pivot, use_container_width=True)
-        download_report(pivot, "brand_pivot", "⬇️ Download Brand Pivot", "flipkart", "Brand Pivot", key="flip_brand_pivot")
+        download_module_report(
+            df=pivot.reset_index(),
+            module_name=MODULE_NAME,
+            report_name="Brand Pivot",
+            button_label="⬇️ Download Brand Pivot",
+            key="flip_brand_pivot"
+        )
 
     with tab2:
         pivot = final_df.pivot_table(
@@ -219,12 +210,24 @@ if st.session_state.flip_results:
         pivot.loc["Grand Total"] = pivot.sum(numeric_only=True)
 
         st.dataframe(pivot, use_container_width=True)
-        download_report(pivot, "manager_pivot", "⬇️ Download Manager Pivot", "flipkart", "Manager Pivot", key="flip_manager_pivot")
+        download_module_report(
+            df=pivot.reset_index(),
+            module_name=MODULE_NAME,
+            report_name="Manager Pivot",
+            button_label="⬇️ Download Manager Pivot",
+            key="flip_manager_pivot"
+        )
 
     # ---------- TAB 3 ----------
     with tab3:
         st.dataframe(final_df, use_container_width=True)
-        download_report(final_df, "raw_data", "⬇️ Download Raw Data", "flipkart", "Raw Data", key="flip_raw_data")
+        download_module_report(
+            df=final_df,
+            module_name=MODULE_NAME,
+            report_name="Raw Data",
+            button_label="⬇️ Download Raw Data",
+            key="flip_raw_data"
+        )
 
     # ---------- TAB 4 ----------
     with tab4:
@@ -253,7 +256,13 @@ if st.session_state.flip_results:
         )
         pivot_df = pd.concat([base, grand])
         st.dataframe(pivot_df, use_container_width=True)
-        download_report(pivot_df, "brand_fns_pivot", "⬇️ Download Brand/FNS Pivot", "flipkart", "Brand FNS Pivot", key="flip_brand_fns")
+        download_module_report(
+            df=pivot_df.reset_index(),
+            module_name=MODULE_NAME,
+            report_name="Brand FNS Pivot",
+            button_label="⬇️ Download Brand/FNS Pivot",
+            key="flip_brand_fns"
+        )
 
     # ---------- TAB 6 ----------
     with tab6:
@@ -272,7 +281,13 @@ if st.session_state.flip_results:
         )
         pivot_df = pd.concat([base, grand])
         st.dataframe(pivot_df, use_container_width=True)
-        download_report(pivot_df, "manager_brand_fns_pivot", "⬇️ Download Manager/Brand/FNS Pivot", "flipkart", "Manager Brand FNS Pivot", key="flip_mgr_brand_fns")
+        download_module_report(
+            df=pivot_df.reset_index(),
+            module_name=MODULE_NAME,
+            report_name="Manager Brand FNS Pivot",
+            button_label="⬇️ Download Manager/Brand/FNS Pivot",
+            key="flip_mgr_brand_fns"
+        )
 
     # ---------- TAB 7 : BRAND PIVOT ----------
     with tab7:
@@ -284,7 +299,13 @@ if st.session_state.flip_results:
         ).rename(columns={"Final Sale Units": "Sum of Final Sale Units", "Sales": "Sum of Final Sale Amount"})
         brand_pivot.loc["Grand Total"] = brand_pivot.sum(numeric_only=True)
         st.dataframe(brand_pivot, use_container_width=True)
-        download_report(brand_pivot, "brand_pivot_simple", "⬇️ Download Brand Pivot", "flipkart", "Simple Brand Pivot", key="flip_brand_simple")
+        download_module_report(
+            df=brand_pivot.reset_index(),
+            module_name=MODULE_NAME,
+            report_name="Simple Brand Pivot",
+            button_label="⬇️ Download Brand Pivot",
+            key="flip_brand_simple"
+        )
 
     # ---------- TAB 8 : BRAND MANAGER PIVOT ----------
     with tab8:
@@ -296,7 +317,13 @@ if st.session_state.flip_results:
         ).rename(columns={"Final Sale Units": "Sum of Final Sale Units", "Sales": "Sum of Final Sale Amount"})
         manager_pivot.loc["Grand Total"] = manager_pivot.sum(numeric_only=True)
         st.dataframe(manager_pivot, use_container_width=True)
-        download_report(manager_pivot, "manager_pivot_simple", "⬇️ Download Manager Pivot", "flipkart", "Simple Manager Pivot", key="flip_mgr_simple")
+        download_module_report(
+            df=manager_pivot.reset_index(),
+            module_name=MODULE_NAME,
+            report_name="Simple Manager Pivot",
+            button_label="⬇️ Download Manager Pivot",
+            key="flip_mgr_simple"
+        )
 
 else:
     st.info("👆 Upload files and click **Generate Analysis**")

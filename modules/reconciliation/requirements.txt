@@ -1,7 +1,0 @@
-streamlit 
-pandas 
-openpyxl 
-azure-ai-documentintelligence
-python-dotenv
-fuzzywuzzy
-pymongo

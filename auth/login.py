@@ -2,7 +2,7 @@ import streamlit as st
 from auth.auth_utils import authenticate_user
 
 def login():
-    """Clean, professional login page with contained card layout."""
+    """Clean, minimal login page with light theme."""
     
     # Hide Streamlit header and footer for clean login
     st.markdown("""
@@ -12,9 +12,9 @@ def login():
         footer {visibility: hidden;}
         header {visibility: hidden;}
         
-        /* Dark background */
+        /* Light background with subtle gradient */
         .stApp {
-            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         }
         
         /* Remove default padding */
@@ -28,102 +28,119 @@ def login():
             box-shadow: none !important;
         }
         
-        /* Login card container */
+        /* Login card container - Minimal White Card */
         .login-card {
-            max-width: 400px;
-            margin: 2rem auto;
-            background: rgba(30, 30, 50, 0.95);
-            border-radius: 20px;
+            max-width: 420px;
+            margin: 3rem auto;
+            background: #ffffff;
+            border-radius: 16px;
             padding: 2.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         }
         
         /* Logo area */
         .login-logo {
             text-align: center;
-            margin-bottom: 1.5rem;
+            margin-bottom: 2rem;
         }
         
         .login-logo-icon {
-            width: 70px;
-            height: 70px;
-            background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
-            border-radius: 16px;
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border-radius: 14px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            font-size: 1.8rem;
             margin-bottom: 1rem;
-            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
         
         .login-title {
             font-size: 1.5rem;
             font-weight: 700;
-            background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: #1e293b;
             margin: 0;
         }
         
         .login-subtitle {
-            color: #94a3b8;
+            color: #64748b;
             font-size: 0.9rem;
             margin-top: 0.5rem;
         }
         
         /* Form styling */
         .login-card .stTextInput > label {
-            color: #94a3b8 !important;
+            color: #475569 !important;
             font-size: 0.85rem !important;
             font-weight: 500 !important;
         }
         
         .login-card .stTextInput > div > div > input {
-            background: rgba(255, 255, 255, 0.08) !important;
-            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            background: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
             border-radius: 10px !important;
-            color: #f8fafc !important;
+            color: #1e293b !important;
             padding: 0.8rem 1rem !important;
+            font-size: 0.95rem !important;
+        }
+        
+        .login-card .stTextInput > div > div > input::placeholder {
+            color: #94a3b8 !important;
         }
         
         .login-card .stTextInput > div > div > input:focus {
-            border-color: #6366f1 !important;
-            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
         }
         
         .login-card .stButton > button {
             width: 100%;
-            background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%) !important;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
             border: none !important;
             border-radius: 10px !important;
-            padding: 0.8rem !important;
+            padding: 0.85rem !important;
             font-weight: 600 !important;
             font-size: 1rem !important;
-            margin-top: 0.5rem;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            margin-top: 0.75rem;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            transition: all 0.2s ease;
         }
         
         .login-card .stButton > button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
         }
         
         /* Footer */
         .login-footer {
             text-align: center;
             margin-top: 1.5rem;
-            padding-top: 1rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            color: #64748b;
-            font-size: 0.75rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid #e2e8f0;
+            color: #94a3b8;
+            font-size: 0.8rem;
         }
         
         /* Alerts inside card */
         .login-card .stAlert {
             margin-top: 1rem;
             border-radius: 8px;
+        }
+        
+        /* Success message styling */
+        .login-card .stSuccess {
+            background: #f0fdf4 !important;
+            border-color: #86efac !important;
+        }
+        
+        /* Error message styling */
+        .login-card .stError {
+            background: #fef2f2 !important;
+            border-color: #fecaca !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -148,7 +165,7 @@ def login():
         email = st.text_input("Email Address", placeholder="Enter your email", key="login_email")
         password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
         
-        if st.button("🚀 Sign In", key="login_btn", use_container_width=True):
+        if st.button("Sign In", key="login_btn", use_container_width=True):
             if not email or not password:
                 st.error("⚠️ Please enter both email and password")
             else:

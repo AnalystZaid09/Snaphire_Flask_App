@@ -11,8 +11,15 @@ from azure.ai.documentintelligence import DocumentIntelligenceClient
 from openpyxl.styles import PatternFill, Font, Alignment
 from openpyxl.utils import get_column_letter
 from openpyxl import load_workbook
-from mongo_utils import save_reconciliation_report
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.mongo import save_reconciliation_report
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "reconciliation"
 
 # Load .env for local dev (optional)
 load_dotenv()

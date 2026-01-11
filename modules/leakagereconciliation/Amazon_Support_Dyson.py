@@ -5,7 +5,14 @@ import numpy as np
 from io import BytesIO
 import zipfile
 import warnings
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "leakagereconciliation"
 
 # Suppress FutureWarnings
 warnings.filterwarnings('ignore', category=FutureWarning)
@@ -298,13 +305,12 @@ def render_tab(tab, key):
                 use_container_width=True
             )
             
-            csv = convert_df_to_csv(st.session_state[f'{key}_processed'])
-            st.download_button(
-                label="📥 Download Processed Data (Before Pivot)",
-                data=csv,
-                file_name=f"{key.lower()}_processed_before_pivot.csv",
-                mime="text/csv",
-                use_container_width=True
+            download_module_report(
+                df=st.session_state[f'{key}_processed'],
+                module_name=MODULE_NAME,
+                report_name=f"{key} Processed Data (Before Pivot)",
+                button_label="📥 Download Processed Data (Before Pivot)",
+                key=f"dyson_processed_{key.lower()}"
             )
             st.markdown("---")
         
@@ -364,13 +370,12 @@ def render_tab(tab, key):
             )
             
             # Download button
-            csv = convert_df_to_csv(result)
-            st.download_button(
-                label=f"📥 Download {key} Final Results as CSV",
-                data=csv,
-                file_name=f"{key.lower()}_final_support_analysis.csv",
-                mime="text/csv",
-                use_container_width=True
+            download_module_report(
+                df=result,
+                module_name=MODULE_NAME,
+                report_name=f"{key} Final Support Analysis",
+                button_label=f"📥 Download {key} Final Results",
+                key=f"dyson_final_{key.lower()}"
             )
 
 

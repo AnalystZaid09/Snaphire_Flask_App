@@ -3,8 +3,14 @@ import pandas as pd
 import numpy as np
 from io import BytesIO
 
-from mongo_utils import save_reconciliation_report
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "amazon"
 
 st.set_page_config(page_title="Amazon Monthly P&L Analysis", layout="wide")
 apply_professional_style()
@@ -227,19 +233,6 @@ if transaction_file and pm_file and ncemi_file and dyson_file:
         except Exception as e:
             st.error(f"❌ Error processing data: {str(e)}")
             st.exception(e)
-            
-        # Save to MongoDB
-        try:
-            # We save here if processed successfully
-            save_reconciliation_report(
-                collection_name="amazon_monthly_pl",
-                invoice_no=f"MonthlyPL_{pd.Timestamp.now().strftime('%Y%m%d%H%M')}",
-                summary_data=pd.DataFrame([{"Total Sales": result_df['Sales Amount'].sum(), "Total Profit": result_df['With All Profit'].sum()}]),
-                line_items_data=result_df,
-                metadata={"type": "monthly_pl"}
-            )
-        except Exception as e:
-            pass
     
     # Display results if data has been processed
     if 'result_df' in st.session_state:
@@ -292,32 +285,13 @@ if transaction_file and pm_file and ncemi_file and dyson_file:
         # Download buttons
         st.subheader("💾 Download Reports")
         
-        col_dl1, col_dl2, col_dl3 = st.columns([1, 1, 2])
-        
-        with col_dl1:
-            # Convert to Excel
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                result_df.to_excel(writer, index=False, sheet_name='Processed Data')
-            
-            st.download_button(
-                label="📥 Download Excel",
-                data=output.getvalue(),
-                file_name=get_download_filename("amazon_analysis_output"),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
-        
-        with col_dl2:
-            # Convert to CSV
-            csv = result_df.to_csv(index=False)
-            st.download_button(
-                label="📥 Download CSV",
-                data=csv,
-                file_name=get_download_filename("amazon_analysis_output.csv"),
-                mime="text/csv",
-                use_container_width=True
-            )
+        download_module_report(
+            df=result_df,
+            module_name=MODULE_NAME,
+            report_name="Monthly PL Analysis",
+            button_label="📥 Download Excel",
+            key="dl_monthly_pl"
+        )
 
 else:
     st.info("👈 Please upload all required files from the sidebar to begin analysis")

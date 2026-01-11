@@ -3,7 +3,14 @@ import pandas as pd
 import zipfile
 import io
 from datetime import datetime
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "leakagereconciliation"
 
 # ==============================
 # Page configuration
@@ -220,7 +227,7 @@ if st.button("🚀 Process Data", use_container_width=True):
     st.markdown("<div class='success-box'>🎉 Processing complete</div>", unsafe_allow_html=True)
 
     # Save to MongoDB
-    from mongo_utils import save_reconciliation_report
+    from common.mongo import save_reconciliation_report
     save_reconciliation_report(
         collection_name="support_ncemi",
         invoice_no=f"NCEMI_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -261,12 +268,24 @@ if "payment_order" in st.session_state:
     with tab1:
         pivot_brand = create_pivot_table(df, "Brand")
         st.dataframe(make_arrow_safe(pivot_brand), use_container_width=True)
-        st.download_button("📥 Download Brand Analysis (CSV)", pivot_brand.to_csv(index=False).encode(), get_download_filename("brand_analysis", "csv"))
+        download_module_report(
+            df=pivot_brand,
+            module_name=MODULE_NAME,
+            report_name="Brand Analysis",
+            button_label="📥 Download Brand Analysis",
+            key="ncemi_brand"
+        )
 
     with tab2:
         pivot_mgr = create_pivot_table(df, "Brand Manager")
         st.dataframe(make_arrow_safe(pivot_mgr), use_container_width=True)
-        st.download_button("📥 Download Brand Manager Analysis (CSV)", pivot_mgr.to_csv(index=False).encode(), get_download_filename("brand_manager_analysis", "csv"))
+        download_module_report(
+            df=pivot_mgr,
+            module_name=MODULE_NAME,
+            report_name="Brand Manager Analysis",
+            button_label="📥 Download Brand Manager Analysis",
+            key="ncemi_manager"
+        )
 
     with tab3:
         summary, service_df = process_service_fees(st.session_state.payment_df)
@@ -277,8 +296,20 @@ if "payment_order" in st.session_state:
         c3.metric("Total", f"₹{summary['total']:,.2f}")
 
         st.dataframe(make_arrow_safe(service_df), use_container_width=True)
-        st.download_button("📥 Download Service Fees (CSV)", service_df.to_csv(index=False).encode(), get_download_filename("service_fees", "csv"))
+        download_module_report(
+            df=service_df,
+            module_name=MODULE_NAME,
+            report_name="Service Fees Details",
+            button_label="📥 Download Service Fees",
+            key="ncemi_service_fees"
+        )
 
     with tab4:
         st.dataframe(make_arrow_safe(df), use_container_width=True)
-        st.download_button("📥 Download Raw Data (CSV)", df.to_csv(index=False).encode(), get_download_filename("raw_data", "csv"))
+        download_module_report(
+            df=df,
+            module_name=MODULE_NAME,
+            report_name="Raw Data",
+            button_label="📥 Download Raw Data",
+            key="ncemi_raw_data"
+        )

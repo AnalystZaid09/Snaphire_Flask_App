@@ -5,9 +5,17 @@ from io import BytesIO
 # --------------------------------------------------
 # Page config
 # --------------------------------------------------
-from mongo_utils import save_reconciliation_report
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report,
+    download_multi_sheet_excel
+)
 from datetime import datetime
+
+# Module name for MongoDB collection
+MODULE_NAME = "amazon"
 
 # --------------------------------------------------
 # Page config
@@ -110,18 +118,8 @@ if st.button("🚀 Generate Analysis"):
         "🧾 Raw Data"
     ])
     
-    # Save to MongoDB
-    try:
-        with st.spinner("Saving Raw Data to DB..."):
-            save_reconciliation_report(
-                collection_name="amazon_sales_analysis",
-                invoice_no=f"SalesAnalysis_{datetime.now().strftime('%Y%m%d%H%M')}",
-                summary_data=pd.DataFrame(),
-                line_items_data=Working,
-                metadata={"type": "sales_analysis", "records": len(Working)}
-            )
-    except Exception as e:
-        pass
+    # Note: MongoDB logging is handled automatically by download_report()
+    # No need for manual save_reconciliation_report() call here
 
     # ==================================================
     # TAB 1 – BRAND MANAGER ANALYSIS (DATE WISE + GRAND TOTAL)
@@ -161,15 +159,17 @@ if st.button("🚀 Generate Analysis"):
 
         st.dataframe(pivot_bm_final, use_container_width=True)
 
-        out = BytesIO()
-        with pd.ExcelWriter(out, engine="openpyxl") as writer:
-            pivot_bm_final.to_excel(writer)
-        out.seek(0)
-
-        st.download_button(
-            "📥 Download Brand Manager Analysis",
-            out,
-            get_download_filename("brand_manager_analysis")
+        # Convert MultiIndex for download
+        pivot_bm_download = pivot_bm_final.copy()
+        pivot_bm_download.columns = [f"{c[0]}_{c[1]}" for c in pivot_bm_download.columns]
+        pivot_bm_download = pivot_bm_download.reset_index()
+        
+        download_module_report(
+            df=pivot_bm_download,
+            module_name=MODULE_NAME,
+            report_name="Brand Manager Analysis",
+            button_label="📥 Download Brand Manager Analysis",
+            key="dl_bm_analysis"
         )
 
     # ==================================================
@@ -209,15 +209,17 @@ if st.button("🚀 Generate Analysis"):
 
         st.dataframe(pivot_brand_final, use_container_width=True)
 
-        out = BytesIO()
-        with pd.ExcelWriter(out, engine="openpyxl") as writer:
-            pivot_brand_final.to_excel(writer)
-        out.seek(0)
+        # Convert MultiIndex for download
+        pivot_brand_download = pivot_brand_final.copy()
+        pivot_brand_download.columns = [f"{c[0]}_{c[1]}" for c in pivot_brand_download.columns]
+        pivot_brand_download = pivot_brand_download.reset_index()
 
-        st.download_button(
-            "📥 Download Brand Analysis",
-            out,
-            get_download_filename("brand_analysis")
+        download_module_report(
+            df=pivot_brand_download,
+            module_name=MODULE_NAME,
+            report_name="Brand Analysis",
+            button_label="📥 Download Brand Analysis",
+            key="dl_brand_analysis"
         )
 
     # ==================================================
@@ -242,15 +244,12 @@ if st.button("🚀 Generate Analysis"):
 
         st.dataframe(brand_asin_final, use_container_width=True)
 
-        out = BytesIO()
-        with pd.ExcelWriter(out, engine="openpyxl") as writer:
-            brand_asin_final.to_excel(writer, index=False)
-        out.seek(0)
-
-        st.download_button(
-            "📥 Download Brand & ASIN Summary",
-            out,
-            "brand_asin_summary.xlsx"
+        download_module_report(
+            df=brand_asin_final,
+            module_name=MODULE_NAME,
+            report_name="Brand ASIN Summary",
+            button_label="📥 Download Brand & ASIN Summary",
+            key="dl_brand_asin"
         )
 
     # ==================================================
@@ -281,15 +280,12 @@ if st.button("🚀 Generate Analysis"):
 
         st.dataframe(bm_brand_asin_final, use_container_width=True)
 
-        out = BytesIO()
-        with pd.ExcelWriter(out, engine="openpyxl") as writer:
-            bm_brand_asin_final.to_excel(writer, index=False)
-        out.seek(0)
-
-        st.download_button(
-            "📥 Download BM / Brand / ASIN Summary",
-            out,
-            get_download_filename("bm_brand_asin_summary")
+        download_module_report(
+            df=bm_brand_asin_final,
+            module_name=MODULE_NAME,
+            report_name="BM Brand ASIN Summary",
+            button_label="📥 Download BM / Brand / ASIN Summary",
+            key="dl_bm_brand_asin"
         )
 
     # ==================================================
@@ -310,15 +306,12 @@ if st.button("🚀 Generate Analysis"):
         brand_summary_final = pd.concat([brand_summary, brand_total], ignore_index=True)
         st.dataframe(brand_summary_final, use_container_width=True)
         
-        out = BytesIO()
-        with pd.ExcelWriter(out, engine="openpyxl") as writer:
-            brand_summary_final.to_excel(writer, sheet_name="Brand Summary", index=False)
-        out.seek(0)
-
-        st.download_button(
-            "📥 Download Brand Report",
-            out,
-            get_download_filename("Brand_report")
+        download_module_report(
+            df=brand_summary_final,
+            module_name=MODULE_NAME,
+            report_name="Brand Summary Report",
+            button_label="📥 Download Brand Report",
+            key="dl_brand_report"
         )
 
         bm_summary = (
@@ -335,16 +328,12 @@ if st.button("🚀 Generate Analysis"):
         bm_summary_final = pd.concat([bm_summary, bm_total], ignore_index=True)
         st.dataframe(bm_summary_final, use_container_width=True)
         
-        # 📥 DOWNLOAD SUMMARY REPORT
-        out = BytesIO()
-        with pd.ExcelWriter(out, engine="openpyxl") as writer:
-            bm_summary_final.to_excel(writer, sheet_name="BM Summary", index=False)
-        out.seek(0)
-
-        st.download_button(
-            "📥 Download Brand Manager Report",
-            out,
-            get_download_filename("Brand_Manager_report")
+        download_module_report(
+            df=bm_summary_final,
+            module_name=MODULE_NAME,
+            report_name="Brand Manager Summary Report",
+            button_label="📥 Download Brand Manager Report",
+            key="dl_bm_report"
         )
 
     # ==================================================
@@ -353,16 +342,37 @@ if st.button("🚀 Generate Analysis"):
     with tab6:
         st.dataframe(Working, use_container_width=True)
      
-        # 📥 DOWNLOAD RAW DATA
-        out = BytesIO()
-        with pd.ExcelWriter(out, engine="openpyxl") as writer:
-            Working.to_excel(writer, index=False, sheet_name="Raw Data")
-        out.seek(0)
-
-        st.download_button(
-            "📥 Download Raw Data",
-            out,
-            get_download_filename("raw_data")
+        download_module_report(
+            df=Working,
+            module_name=MODULE_NAME,
+            report_name="Raw Data",
+            button_label="📥 Download Raw Data",
+            key="dl_raw_data"
         )
+
+    # ==================================================
+    # COMBINED DOWNLOAD - All reports in one Excel file
+    # ==================================================
+    st.markdown("---")
+    st.subheader("📦 Download All Reports")
+    
+    # Prepare all reports for combined download
+    all_reports = {
+        "Brand Manager Analysis": pivot_bm_download,
+        "Brand Analysis": pivot_brand_download,
+        "Brand ASIN Summary": brand_asin_final,
+        "BM Brand ASIN Summary": bm_brand_asin_final,
+        "Brand Summary": brand_summary_final,
+        "BM Summary": bm_summary_final,
+        "Raw Data": Working
+    }
+    
+    download_multi_sheet_excel(
+        reports=all_reports,
+        base_filename="amazon_sales_all_reports",
+        module_name=MODULE_NAME,
+        button_label="📦 Download All Reports (Combined Excel)",
+        key="dl_all_reports"
+    )
 
     st.success("✅ All reports generated correctly (date-wise & grand totals fixed)")

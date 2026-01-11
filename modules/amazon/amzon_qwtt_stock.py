@@ -1,10 +1,17 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
-
-from mongo_utils import save_reconciliation_report
-from ui_utils import apply_professional_style, get_download_filename, render_header
 from datetime import datetime
+
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+# Module name for MongoDB collection
+MODULE_NAME = "amazon"
 
 st.set_page_config(page_title="QWTT Reports", layout="wide")
 apply_professional_style()
@@ -109,13 +116,6 @@ def add_grand_total(df):
     
     return df_with_total
 
-def to_excel(df, sheet_name):
-    """Convert dataframe to Excel bytes"""
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name=sheet_name, index=False)
-    return output.getvalue()
-
 # Generate button
 generate_button = st.sidebar.button("🚀 Generate Reports", type="primary", use_container_width=True)
 
@@ -159,26 +159,14 @@ if inventory_file and pm_file and sales_file and generate_button:
             # Display dataframe
             st.dataframe(inv_report_with_total, use_container_width=True, height=500)
             
-            # Download button (with grand total)
-            excel_data = to_excel(inv_report_with_total, "Inventory Report")
-            st.download_button(
-                label="📥 Download Inventory Report (Excel)",
-                data=excel_data,
-                file_name=get_download_filename("QWTT_Inventory_Report"),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            # Download with module-specific saving
+            download_module_report(
+                df=inv_report_with_total,
+                module_name=MODULE_NAME,
+                report_name="QWTT Inventory Report",
+                button_label="📥 Download Inventory Report",
+                key="dl_qwtt_inventory"
             )
-            
-            # Save to MongoDB
-            try:
-                save_reconciliation_report(
-                    collection_name="amazon_qwtt_inventory",
-                    invoice_no=f"QWTT_Inv_{datetime.now().strftime('%Y%m%d%H%M')}",
-                    summary_data=pd.DataFrame([{"Total Stock": inv_report["Stock"].sum()}]),
-                    line_items_data=inv_report,
-                    metadata={"type": "qwtt_inventory"}
-                )
-            except Exception as e:
-                pass
         
         with tab2:
             st.subheader("QWTT Sales Report")
@@ -203,26 +191,14 @@ if inventory_file and pm_file and sales_file and generate_button:
             # Display dataframe
             st.dataframe(sales_report_with_total, use_container_width=True, height=500)
             
-            # Download button (with grand total)
-            excel_data = to_excel(sales_report_with_total, "Sales Report")
-            st.download_button(
-                label="📥 Download Sales Report (Excel)",
-                data=excel_data,
-                file_name=get_download_filename("QWTT_Sales_Report"),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            # Download with module-specific saving
+            download_module_report(
+                df=sales_report_with_total,
+                module_name=MODULE_NAME,
+                report_name="QWTT Sales Report",
+                button_label="📥 Download Sales Report",
+                key="dl_qwtt_sales"
             )
-            
-            # Save to MongoDB
-            try:
-                 save_reconciliation_report(
-                    collection_name="amazon_qwtt_sales",
-                    invoice_no=f"QWTT_Sales_{datetime.now().strftime('%Y%m%d%H%M')}",
-                    summary_data=pd.DataFrame([{"Total Sales": sales_report["Sales Qty"].sum()}]),
-                    line_items_data=sales_report,
-                    metadata={"type": "qwtt_sales"}
-                )
-            except Exception as e:
-                pass
             
     except Exception as e:
         st.error(f"❌ Error processing files: {str(e)}")

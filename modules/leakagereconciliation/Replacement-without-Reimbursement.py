@@ -2,7 +2,14 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, date
 import io
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "leakagereconciliation"
 
 st.set_page_config(page_title="Amazon Replacement Without Reimbursement Analyzer", page_icon="🔄", layout="wide")
 apply_professional_style()
@@ -273,33 +280,29 @@ if all(all_files):
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
-                    from ui_utils import download_report
-                    download_report(
+                    download_module_report(
                         df=results['damaged_returns'],
-                        base_filename="damaged_returns_report",
-                        button_label="⬇️ Download Damaged Returns",
-                        module_name="leakagereconciliation",
+                        module_name=MODULE_NAME,
                         report_name=f"Damaged Returns (≥{int(days_threshold)} days)",
+                        button_label="⬇️ Download Damaged Returns",
                         key="replacement_damaged"
                     )
                 
                 with col2:
-                    download_report(
+                    download_module_report(
                         df=results['refund_without_return'],
-                        base_filename="refund_without_return_report",
-                        button_label="⬇️ Download Refund Without Return",
-                        module_name="leakagereconciliation",
+                        module_name=MODULE_NAME,
                         report_name=f"Refund Without Return (≥{int(days_threshold)} days)",
+                        button_label="⬇️ Download Refund Without Return",
                         key="replacement_refund"
                     )
                 
                 with col3:
-                    download_report(
+                    download_module_report(
                         df=results['main'],
-                        base_filename="full_replacement_report",
-                        button_label="⬇️ Download Full Report",
-                        module_name="leakagereconciliation",
+                        module_name=MODULE_NAME,
                         report_name="Full Replacement Report",
+                        button_label="⬇️ Download Full Report",
                         key="replacement_full"
                     )
 else:

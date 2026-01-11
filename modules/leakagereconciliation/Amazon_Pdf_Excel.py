@@ -138,7 +138,14 @@ def process_invoice(pdf_file):
 
     return rows
 
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "leakagereconciliation"
 
 # --- STREAMLIT UI ---
 st.set_page_config(page_title="Invoice Data Master", layout="wide")
@@ -164,6 +171,10 @@ if uploaded_files:
         st.success(f"Successfully processed {len(uploaded_files)} files.")
         st.dataframe(df, use_container_width=True)
 
-        buffer = io.BytesIO()
-        df.to_excel(buffer, index=False)
-        st.download_button("📥 Download Master Excel", buffer.getvalue(), get_download_filename("Combined_Invoices"))
+        download_module_report(
+            df=df,
+            module_name=MODULE_NAME,
+            report_name="Combined Invoices",
+            button_label="📥 Download Master Excel",
+            key="dl_pdf_excel"
+        )

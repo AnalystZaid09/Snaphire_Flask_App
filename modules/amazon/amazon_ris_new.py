@@ -4,8 +4,14 @@ import numpy as np
 import re
 from io import BytesIO
 
-from mongo_utils import save_reconciliation_report
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report
+)
+
+MODULE_NAME = "amazon"
 
 # Page configuration
 st.set_page_config(
@@ -185,20 +191,7 @@ with st.sidebar:
                         if ris_df[col].dtype == 'object':
                             ris_df[col] = ris_df[col].astype(str)
                     
-                    # Store processed data
                     st.session_state.processed_data = ris_df
-                    
-                    # Save to MongoDB
-                    try:
-                         save_reconciliation_report(
-                            collection_name="amazon_ris",
-                            invoice_no=f"RIS_{pd.Timestamp.now().strftime('%Y%m%d%H%M')}",
-                            summary_data=pd.DataFrame([{"Total Records": len(ris_df)}]),
-                            line_items_data=ris_df,
-                            metadata={"type": "ris_analysis"}
-                        )
-                    except Exception as e:
-                        pass
                     
                     # Generate all pivots
                     results = {}
@@ -410,11 +403,12 @@ if st.session_state.processed_data is not None:
         st.markdown("---")
         st.dataframe(df, use_container_width=True, height=400)
         
-        st.download_button(
-            label="📥 Download Processed Data (Excel)",
-            data=to_excel(df),
-            file_name=get_download_filename("processed_ris_data"),
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        download_module_report(
+            df=df,
+            module_name=MODULE_NAME,
+            report_name="Processed RIS Data",
+            button_label="📥 Download Processed Data",
+            key="dl_ris_processed"
         )
     
     # Tab 2: Brand-wise RIS
@@ -423,11 +417,12 @@ if st.session_state.processed_data is not None:
         if 'brand_wise' in st.session_state.all_results:
             df = st.session_state.all_results['brand_wise']
             st.dataframe(df, use_container_width=True, height=400)
-            st.download_button(
-                label="📥 Download Brand-wise Analysis (Excel)",
-                data=to_excel(df),
-                file_name=get_download_filename("brand_wise_ris"),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            download_module_report(
+                df=df,
+                module_name=MODULE_NAME,
+                report_name="Brand-wise RIS Analysis",
+                button_label="📥 Download Brand-wise Analysis",
+                key="dl_ris_brand"
             )
     
     # Tab 3: ASIN-wise RIS
@@ -436,11 +431,12 @@ if st.session_state.processed_data is not None:
         if 'asin_wise' in st.session_state.all_results:
             df = st.session_state.all_results['asin_wise']
             st.dataframe(df, use_container_width=True, height=400)
-            st.download_button(
-                label="📥 Download ASIN-wise Analysis (Excel)",
-                data=to_excel(df),
-                file_name=get_download_filename("asin_wise_ris"),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            download_module_report(
+                df=df,
+                module_name=MODULE_NAME,
+                report_name="ASIN-wise RIS Analysis",
+                button_label="📥 Download ASIN-wise Analysis",
+                key="dl_ris_asin"
             )
     
     # Tab 4: Cluster-wise RIS
@@ -449,11 +445,12 @@ if st.session_state.processed_data is not None:
         if 'cluster_wise' in st.session_state.all_results:
             df = st.session_state.all_results['cluster_wise']
             st.dataframe(df, use_container_width=True, height=400)
-            st.download_button(
-                label="📥 Download Cluster-wise Analysis (Excel)",
-                data=to_excel(df),
-                file_name=get_download_filename("cluster_wise_ris"),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            download_module_report(
+                df=df,
+                module_name=MODULE_NAME,
+                report_name="Cluster-wise RIS Analysis",
+                button_label="📥 Download Cluster-wise Analysis",
+                key="dl_ris_cluster"
             )
     
     # Tab 5: Cluster-Brand Analysis
@@ -462,11 +459,12 @@ if st.session_state.processed_data is not None:
         if 'cluster_brand' in st.session_state.all_results:
             df = st.session_state.all_results['cluster_brand']
             st.dataframe(df, use_container_width=True, height=400)
-            st.download_button(
-                label="📥 Download Cluster-Brand Analysis (Excel)",
-                data=to_excel(df),
-                file_name=get_download_filename("cluster_brand_ris"),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            download_module_report(
+                df=df,
+                module_name=MODULE_NAME,
+                report_name="Cluster-Brand RIS Analysis",
+                button_label="📥 Download Cluster-Brand Analysis",
+                key="dl_ris_cluster_brand"
             )
     
     # Tab 6: State Cluster Analysis
@@ -475,11 +473,12 @@ if st.session_state.processed_data is not None:
         if 'state_cluster' in st.session_state.all_results:
             df = st.session_state.all_results['state_cluster']
             st.dataframe(df, use_container_width=True, height=400)
-            st.download_button(
-                label="📥 Download State Cluster Analysis (Excel)",
-                data=to_excel(df),
-                file_name=get_download_filename("state_cluster_ris"),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            download_module_report(
+                df=df,
+                module_name=MODULE_NAME,
+                report_name="State Cluster RIS Analysis",
+                button_label="📥 Download State Cluster Analysis",
+                key="dl_ris_state_cluster"
             )
     
     # Tab 7: State-FC Analysis
@@ -488,11 +487,12 @@ if st.session_state.processed_data is not None:
         if 'state_fc' in st.session_state.all_results:
             df = st.session_state.all_results['state_fc']
             st.dataframe(df, use_container_width=True, height=400)
-            st.download_button(
-                label="📥 Download State-FC Analysis (Excel)",
-                data=to_excel(df),
-                file_name=get_download_filename("state_fc_ris"),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            download_module_report(
+                df=df,
+                module_name=MODULE_NAME,
+                report_name="State-FC RIS Analysis",
+                button_label="📥 Download State-FC Analysis",
+                key="dl_ris_state_fc"
             )
 
 else:

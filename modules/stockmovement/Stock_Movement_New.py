@@ -1,7 +1,16 @@
 import streamlit as st
 import pandas as pd
 import io
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report,
+    to_excel
+)
+
+# Module name for MongoDB collection
+MODULE_NAME = "stock_movement"
 
 st.set_page_config(page_title="Stock Movement Analysis Dashboard", layout="wide")
 apply_professional_style()
@@ -250,32 +259,13 @@ if all([qwtt_inventory_file, amazon_stock_file, flipkart_business_file,
             st.metric("Total CP Value", f"₹{amazon_business_pivot['CP As Per Qty'].sum():,.2f}")
             st.metric("Total QWTT Stock", f"{amazon_business_pivot['QWTT Stock'].sum():,.0f}")
         
-        # Download button
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            amazon_business_pivot.to_excel(writer, index=False)
-        st.download_button(
-            label="📥 Download Excel",
-            data=buffer.getvalue(),
-            file_name=get_download_filename("amazon_business_pivot"),
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-        
-        # Save to MongoDB
-        from mongo_utils import save_reconciliation_report
-        save_reconciliation_report(
-            collection_name="stock_movement",
-            invoice_no=f"STOCKMOVE_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}",
-            summary_data={
-                "amazon_products": len(amazon_business_pivot),
-                "flipkart_products": len(Flipkart_Business_Pivot),
-                "total_amazon_orders": int(amazon_business_pivot['Total Orders'].sum()),
-                "total_flipkart_sales": int(Flipkart_Business_Pivot['Final Sale Units'].sum()),
-                "total_amazon_cp_value": float(amazon_business_pivot['CP As Per Qty'].sum()),
-                "total_amazon_qwtt_stock": int(amazon_business_pivot['QWTT Stock'].sum())
-            },
-            line_items_data=amazon_business_pivot,
-            metadata={"report_type": "stock_movement"}
+        # Download with module-specific collection saving
+        download_module_report(
+            df=amazon_business_pivot,
+            module_name=MODULE_NAME,
+            report_name="Amazon Business Pivot",
+            button_label="📥 Download Amazon Business Pivot",
+            key="dl_amazon_business"
         )
     
     with tab2:
@@ -290,14 +280,12 @@ if all([qwtt_inventory_file, amazon_stock_file, flipkart_business_file,
             st.metric("Total CP Value", f"₹{Flipkart_Business_Pivot['CP As Per Qty'].sum():,.2f}")
             st.metric("Total QWTT Stock", f"{Flipkart_Business_Pivot['QWTT Stock'].sum():,.0f}")
         
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            Flipkart_Business_Pivot.to_excel(writer, index=False)
-        st.download_button(
-            label="📥 Download Excel",
-            data=buffer.getvalue(),
-            file_name=get_download_filename("flipkart_business_pivot"),
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        download_module_report(
+            df=Flipkart_Business_Pivot,
+            module_name=MODULE_NAME,
+            report_name="Flipkart Business Pivot",
+            button_label="📥 Download Flipkart Business Pivot",
+            key="dl_flipkart_business"
         )
     
     with tab3:
@@ -320,14 +308,12 @@ if all([qwtt_inventory_file, amazon_stock_file, flipkart_business_file,
             st.metric("Total Flipkart Sales", f"{data_to_show['Flipkart Sales'].sum():,.0f}")
             st.metric("Total Flipkart QWTT Stock", f"{data_to_show['Flipkart QWTT Stock'].sum():,.0f}")
         
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            data_to_show.to_excel(writer, index=False)
-        st.download_button(
-            label="📥 Download Excel",
-            data=buffer.getvalue(),
-            file_name=get_download_filename("flipkart_qwtt_inward"),
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        download_module_report(
+            df=data_to_show,
+            module_name=MODULE_NAME,
+            report_name="Flipkart QWTT Inward",
+            button_label="📥 Download Flipkart QWTT Inward",
+            key="dl_flipkart_inward"
         )
     
     with tab4:
@@ -350,14 +336,12 @@ if all([qwtt_inventory_file, amazon_stock_file, flipkart_business_file,
             st.metric("Total Amazon Sales", f"{data_to_show['Amazon Sales'].sum():,.0f}")
             st.metric("Total Amazon Stock", f"{data_to_show['Amazon Stock'].sum():,.0f}")
         
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            data_to_show.to_excel(writer, index=False)
-        st.download_button(
-            label="📥 Download Excel",
-            data=buffer.getvalue(),
-            file_name=get_download_filename("amazon_qwtt_inward"),
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        download_module_report(
+            df=data_to_show,
+            module_name=MODULE_NAME,
+            report_name="Amazon QWTT Inward",
+            button_label="📥 Download Amazon QWTT Inward",
+            key="dl_amazon_inward"
         )
 
 else:

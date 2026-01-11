@@ -2,9 +2,17 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import io
-from ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report,
+    auto_log_reports
+)
 
-st.set_page_config(page_title="Amazon Refund Cross Check", page_icon="📊", layout="wide")
+MODULE_NAME = "leakagereconciliation"
+
+st.set_page_config(page_title="Amazon Refund Cross-Check Analyzer", page_icon="🔍", layout="wide")
 apply_professional_style()
 
 # Custom CSS
@@ -222,8 +230,7 @@ if all(all_files):
                 st.success("✅ Analysis completed successfully!")
                 
                 # Auto-log all reports to MongoDB as they are generated
-                from common.ui_utils import auto_log_reports
-                auto_log_reports(results, "leakagereconciliation")
+                auto_log_reports(results, MODULE_NAME)
 
     # Display results if they exist in session state
     if st.session_state.refund_results:
@@ -258,24 +265,20 @@ if all(all_files):
         col1, col2, col3 = st.columns(3)
         
         # Use centralized ui_utils
-        from common.ui_utils import download_report
         
         with col1:
-            download_report(
-                df=results['main'],
-                base_filename="full_refund_report",
-                button_label="⬇️ Download Full Report",
-                module_name="leakagereconciliation",
-                report_name="Full Refund Report",
-                key="refund_full"
+            download_module_report(
+                df=results['filtered_doorship'],
+                module_name=MODULE_NAME,
+                report_name="Door Ship Returns",
+                button_label="⬇️ Download Door Step",
+                key="refund_door_step"
             )
         
         with col2:
-            download_report(
+            download_module_report(
                 df=results['doorship_tat'],
-                base_filename="door_ship_tat",
-                button_label=f"⬇️ Download Door Ship TAT ({door_tat_min}-{door_tat_max}d)",
-                module_name="leakagereconciliation",
+                module_name=MODULE_NAME,
                 report_name=f"Door Ship TAT ({door_tat_min}-{door_tat_max} days)",
                 key="refund_doorship"
             )
