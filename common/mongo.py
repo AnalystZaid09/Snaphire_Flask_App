@@ -99,6 +99,9 @@ def init_mongo_connection(max_retries=3):
     
     for attempt in range(max_retries):
         try:
+            # Check if we should allow invalid certificates (for machines with SSL issues)
+            allow_invalid_tls = os.getenv("MONGO_TLS_ALLOW_INVALID", "false").lower() == "true"
+            
             client = MongoClient(
                 MONGO_URI,
                 serverSelectionTimeoutMS=SERVER_SELECTION_TIMEOUT_MS,
@@ -107,7 +110,8 @@ def init_mongo_connection(max_retries=3):
                 minPoolSize=MIN_POOL_SIZE,
                 retryWrites=True,
                 w='majority',
-                tlsCAFile=certifi.where()
+                tlsCAFile=certifi.where(),
+                tlsAllowInvalidCertificates=allow_invalid_tls
             )
             # Verify connection
             client.admin.command('ping')
