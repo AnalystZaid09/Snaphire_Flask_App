@@ -11,6 +11,9 @@ from datetime import datetime
 from dotenv import load_dotenv
 import logging
 
+import urllib.parse
+import re
+
 # Load environment variables
 load_dotenv()
 
@@ -18,8 +21,36 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def _get_safe_mongo_uri():
+    """Get MongoDB URI from environment and safely encode credentials."""
+    uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    if not uri or "@" not in uri:
+        return uri
+    
+    try:
+        # Pattern to capture: scheme://user:password@host_and_rest
+        # Supports both mongodb:// and mongodb+srv://
+        match = re.match(r"^(mongodb(?:\+srv)?://)([^:]+):([^@]+)@(.+)$", uri)
+        if match:
+            scheme, user, password, rest = match.groups()
+            # Only encode if it doesn't already appear to be encoded (common check)
+            safe_user = urllib.parse.quote_plus(user) if "%" not in user else user
+            safe_password = urllib.parse.quote_plus(password) if "%" not in password else password
+            return f"{scheme}{safe_user}:{safe_password}@{rest}"
+        
+        # Pattern for user without password: scheme://user@host_and_rest
+        match = re.match(r"^(mongodb(?:\+srv)?://)([^@]+)@(.+)$", uri)
+        if match:
+            scheme, user, rest = match.groups()
+            safe_user = urllib.parse.quote_plus(user) if "%" not in user else user
+            return f"{scheme}{safe_user}@{rest}"
+    except Exception as e:
+        logger.warning(f"Could not safe-encode MongoDB URI: {e}")
+        
+    return uri
+
 # MongoDB Configuration from environment
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+MONGO_URI = _get_safe_mongo_uri()
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "report_app")
 
 # Connection settings for production reliability
