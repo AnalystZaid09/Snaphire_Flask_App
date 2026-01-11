@@ -1,3 +1,4 @@
+# OS & Environment
 .git
 .venv
 venv
@@ -5,9 +6,22 @@ __pycache__
 *.pyc
 .env
 .ipynb_checkpoints
+.agent/
+brain/
+.system_generated/
+
+# Data and report files
 data/
 *.xlsx
+*.xls
 *.csv
-# We can exclude modules if they are not needed by the Flask app,
-# but the Flask app currently reads module files to list them.
-# So we keep the modules/ structure but could ignore contents if we didn't need them.
+*.pdf
+
+# Tools / Modules (The portal only needs to list them, but we want to avoid 
+# huge analytical libraries being scanned or included in the function bundle)
+# We can ignore the tool code itself if we want to be very safe,
+# but since the Flask app walks these directories to find tool names,
+# we keep the directory but ignore large files.
+modules/**/*.xlsx
+modules/**/*.pdf
+modules/**/requirements.txt
