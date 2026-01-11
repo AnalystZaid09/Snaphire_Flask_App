@@ -159,8 +159,9 @@ def tool_page(module_name, tool_name):
             'active': m == module_name
         })
     
-    # Streamlit URL from environment variable or default to localhost
-    base_url = os.getenv("STREAMLIT_URL", "http://localhost:8501")
+    # Smart URL detection: Use relative proxy on Render, localhost for Dev
+    default_url = "/st-engine" if os.getenv("RENDER") or os.getenv("DOCKER_ENV") else "http://localhost:8501"
+    base_url = os.getenv("STREAMLIT_URL", default_url)
     streamlit_url = f"{base_url}/?module={module_name}&tool={tool_name}"
     
     return render_template('tool.html',
