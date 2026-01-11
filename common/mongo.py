@@ -14,8 +14,8 @@ import logging
 import urllib.parse
 import re
 
-# Load environment variables
-load_dotenv()
+# Load environment variables (override=True ensures .env wins)
+load_dotenv(override=True)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +23,12 @@ logger = logging.getLogger(__name__)
 
 def _get_safe_mongo_uri():
     """Get MongoDB URI from environment and safely encode credentials."""
-    uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    uri = os.getenv("MONGO_URI", "mongodb://localhost:27017").strip()
+    
+    # Remove quotes if the user accidentally included them in .env
+    if (uri.startswith('"') and uri.endswith('"')) or (uri.startswith("'") and uri.endswith("'")):
+        uri = uri[1:-1]
+        
     if not uri or "://" not in uri:
         return uri
     
@@ -38,16 +43,19 @@ def _get_safe_mongo_uri():
             
         creds_part, host_part = rest.rsplit("@", 1)
         
+        # Improved "already encoded" detection: 
+        # Check for % followed by two hex digits
+        is_encoded = bool(re.search(r'%[0-9a-fA-F]{2}', creds_part))
+        
         # Handle user:password
         if ":" in creds_part:
             user, password = creds_part.split(":", 1)
-            # Only encode if it doesn't already appear to be encoded (contains %)
-            safe_user = urllib.parse.quote_plus(user) if "%" not in user else user
-            safe_password = urllib.parse.quote_plus(password) if "%" not in password else password
+            safe_user = urllib.parse.quote_plus(user) if not is_encoded else user
+            safe_password = urllib.parse.quote_plus(password) if not is_encoded else password
             return f"{scheme}{safe_user}:{safe_password}@{host_part}"
         else:
             # Handle user only
-            safe_user = urllib.parse.quote_plus(creds_part) if "%" not in creds_part else creds_part
+            safe_user = urllib.parse.quote_plus(creds_part) if not is_encoded else creds_part
             return f"{scheme}{safe_user}@{host_part}"
             
     except Exception as e:
@@ -57,7 +65,7 @@ def _get_safe_mongo_uri():
 
 # MongoDB Configuration from environment
 MONGO_URI = _get_safe_mongo_uri()
-MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "report_app")
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "report_app").strip()
 
 # Connection settings for production reliability
 CONNECTION_TIMEOUT_MS = 10000  # 10 seconds
@@ -73,6 +81,20 @@ db = None
 def init_mongo_connection(max_retries=3):
     """Initialize MongoDB connection with retry logic."""
     global client, db, MONGO_CONNECTED
+    
+    # Diagnostic print (masked password)
+    safe_uri_display = MONGO_URI
+    if "@" in MONGO_URI:
+        parts = MONGO_URI.split("@")
+        creds = parts[0].rsplit("/", 1)[-1] if "/" in parts[0] else parts[0]
+        if ":" in creds:
+            u, p = creds.split(":", 1)
+            safe_uri_display = MONGO_URI.replace(p, "****")
+        else:
+            safe_uri_display = MONGO_URI.replace(creds, "****")
+    
+    logger.info(f"🔌 Attempting to connect to MongoDB...")
+    logger.info(f"🔗 URI (masked): {safe_uri_display}")
     
     for attempt in range(max_retries):
         try:
