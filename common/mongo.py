@@ -23,23 +23,30 @@ if IS_VERCEL:
 # If MONGO_URI is missing
 if not MONGO_URI:
     if IS_VERCEL:
-        # On Vercel, we SHOULD NOT fall back to localhost
         print("❌ CRITICAL: MONGO_URI missing on Vercel deployment!")
-        # We'll set a dummy URI that won't connect but won't be localhost
         MONGO_URI = "mongodb://missing-uri-on-vercel:27017"
     else:
         MONGO_URI = "mongodb://localhost:27017"
-        print("⚠️  Warning: MONGO_URI environment variable not found. Defaulting to localhost:27017")
+        print("⚠️ Warning: MONGO_URI not found. Defaulting to localhost:27017")
 else:
-    # Basic check to ensure it doesn't contain a placeholder
+    # Basic check for common errors
     if "<db_password>" in MONGO_URI:
         print("❌ Error: MONGO_URI contains <db_password> placeholder.")
+    elif "@" in MONGO_URI.split("://")[-1].split("@")[0] and "%40" not in MONGO_URI:
+        # Check if password contains unescaped @ (this is a simple check)
+        # Note: This is an approximation
+        pass
+    
+    if IS_VERCEL:
+        safe_uri = MONGO_URI[:15] + "..." + MONGO_URI[-10:] if len(MONGO_URI) > 25 else "Short URI"
+        print(f"✅ MONGO_URI provided: {safe_uri}")
 
 # Initialize MongoDB client
 try:
     if not MONGO_URI:
         raise ValueError("MONGO_URI is empty")
         
+    # Use shorter timeout for ping
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
     # Test connection
     client.admin.command('ping')
@@ -72,20 +79,6 @@ def log_report_download(user_email: str, module: str, report_name: str, filename
                         file_size: int = 0, metadata: dict = None):
     """
     Log a report download to MongoDB with full report data.
-    
-    Args:
-        user_email: Email/username of the user downloading
-        module: Module name (e.g., 'amazon', 'flipkart', 'reconciliation')
-        report_name: Human-readable name of the report
-        filename: Downloaded filename
-        df_data: DataFrame data (will be converted to records, max 10000 rows)
-        row_count: Number of rows in the report
-        col_count: Number of columns
-        file_size: File size in bytes
-        metadata: Additional metadata dict
-    
-    Returns:
-        bool: True if logged successfully, False otherwise
     """
     try:
         # Convert DataFrame to records if provided
@@ -94,7 +87,6 @@ def log_report_download(user_email: str, module: str, report_name: str, filename
             try:
                 import pandas as pd
                 if hasattr(df_data, 'to_dict'):
-                    # Limit to 10000 rows for practical storage
                     if len(df_data) > 10000:
                         report_data = df_data.head(10000).to_dict(orient='records')
                     else:
@@ -117,7 +109,6 @@ def log_report_download(user_email: str, module: str, report_name: str, filename
             }
         }
         
-        # Store full report data if available
         if report_data:
             document["report_data"] = report_data
         
@@ -126,4 +117,3 @@ def log_report_download(user_email: str, module: str, report_name: str, filename
     except Exception as e:
         print(f"MongoDB log error: {e}")
         return False
-
