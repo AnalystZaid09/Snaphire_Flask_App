@@ -54,8 +54,14 @@ try:
     print(f"✅ Connected to MongoDB: {MONGO_DB_NAME}")
 except Exception as e:
     print(f"❌ MongoDB connection error: {e}")
-    # Fallback - create client that will try to connect later
-    client = MongoClient("mongodb://localhost:27017")
+    # Fallback
+    if IS_VERCEL:
+        # On Vercel, do NOT fall back to localhost. 
+        # Keep the MONGO_URI so the real error is shown during authentication.
+        client = MongoClient(MONGO_URI)
+    else:
+        client = MongoClient("mongodb://localhost:27017")
+    
     db = client[MONGO_DB_NAME]
     MONGO_CONNECTED = False
 
