@@ -139,21 +139,20 @@ Flask_Code_App/
 
 ## ☁️ Cloud Deployment
 
-### Vercel (Recommended)
+### 🏆 Option A: Railway.app (Unified Deployment - Recommended)
+Railway is the most optimal platform as it runs both the Flask Portal and Streamlit Tools under one single link.
 
-```bash
-npm install -g vercel
-vercel login
-vercel --prod
-```
+1.  Push code to GitHub.
+2.  Connect repository in Railway.
+3.  Add all environment variables (`MONGO_URI`, `MONGO_DB_NAME`, etc.).
+4.  **Railway will automatically use the `Procfile` and `run.py` to start everything.**
 
-Add environment variables in Vercel Dashboard under Settings.
+### ☁️ Option B: Vercel (Split Deployment)
+If you prefer Vercel for the frontend, note that it cannot run Streamlit. You must use a "Split Deployment":
 
-### Railway.app
-
-1. Push code to GitHub
-2. Connect repository in Railway
-3. Add environment variables in Settings
+1.  **Deploy Portal to Vercel**: Connect GitHub to Vercel.
+2.  **Deploy Tools elsewhere**: Host the same repo on **Streamlit Cloud** or **Railway**.
+3.  **Link them**: Add the variable **`STREAMLIT_URL`** to your Vercel project settings, pointing to your tools host (e.g., `https://my-tools.streamlit.app`).
 
 ---
 
