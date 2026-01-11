@@ -16,15 +16,14 @@ MONGO_URI = os.getenv("MONGO_URI")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "report_app")
 IS_VERCEL = os.getenv("VERCEL") == "1"
 
-# Logging for debug (visible in Vercel logs)
-if IS_VERCEL:
-    print(f"DEBUG: Vercel environment detected. MONGO_URI found: {'Yes' if MONGO_URI else 'No'}")
+# Hardcoded Fallback for Vercel (if environment variables fail)
+ATLAS_FALLBACK = "mongodb+srv://syedzaidali09112000_db_user:syed%400911@cluster0.pwosxdt.mongodb.net/?appName=Cluster0"
 
 # If MONGO_URI is missing
 if not MONGO_URI:
     if IS_VERCEL:
-        print("❌ CRITICAL: MONGO_URI missing on Vercel deployment!")
-        MONGO_URI = "mongodb://missing-uri-on-vercel:27017"
+        print("⚠️  MONGO_URI not found via environment. Using Vercel Fallback URI.")
+        MONGO_URI = ATLAS_FALLBACK
     else:
         MONGO_URI = "mongodb://localhost:27017"
         print("⚠️ Warning: MONGO_URI not found. Defaulting to localhost:27017")
