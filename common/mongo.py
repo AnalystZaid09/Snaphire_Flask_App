@@ -19,18 +19,22 @@ IS_VERCEL = os.getenv("VERCEL") == "1"
 # Hardcoded Fallback for Vercel (if environment variables fail)
 ATLAS_FALLBACK = "mongodb+srv://syedzaidali09112000_db_user:syed%400911@cluster0.pwosxdt.mongodb.net/?appName=Cluster0"
 
+# Logging for debug (visible in Vercel logs)
+if IS_VERCEL:
+    print(f"DEBUG: Vercel environment detected. MONGO_URI found: {'Yes' if MONGO_URI else 'No'}")
+
 # If MONGO_URI is missing
 if not MONGO_URI:
     if IS_VERCEL:
-        print("⚠️  MONGO_URI not found via environment. Using Vercel Fallback URI.")
+        print("ERROR: MONGO_URI missing on Vercel deployment!")
         MONGO_URI = ATLAS_FALLBACK
     else:
         MONGO_URI = "mongodb://localhost:27017"
-        print("⚠️ Warning: MONGO_URI not found. Defaulting to localhost:27017")
+        print("WARNING: MONGO_URI not found. Defaulting to localhost:27017")
 else:
     # Basic check for common errors
     if "<db_password>" in MONGO_URI:
-        print("❌ Error: MONGO_URI contains <db_password> placeholder.")
+        print("ERROR: MONGO_URI contains <db_password> placeholder.")
     elif "@" in MONGO_URI.split("://")[-1].split("@")[0] and "%40" not in MONGO_URI:
         # Check if password contains unescaped @ (this is a simple check)
         # Note: This is an approximation
@@ -38,7 +42,7 @@ else:
     
     if IS_VERCEL:
         safe_uri = MONGO_URI[:15] + "..." + MONGO_URI[-10:] if len(MONGO_URI) > 25 else "Short URI"
-        print(f"✅ MONGO_URI provided: {safe_uri}")
+        print(f"SUCCESS: MONGO_URI provided: {safe_uri}")
 
 # Initialize MongoDB client
 try:
@@ -51,9 +55,9 @@ try:
     client.admin.command('ping')
     db = client[MONGO_DB_NAME]
     MONGO_CONNECTED = True
-    print(f"✅ Connected to MongoDB: {MONGO_DB_NAME}")
+    print(f"SUCCESS: Connected to MongoDB: {MONGO_DB_NAME}")
 except Exception as e:
-    print(f"❌ MongoDB connection error: {e}")
+    print(f"ERROR: MongoDB connection error: {e}")
     # Fallback
     if IS_VERCEL:
         # On Vercel, do NOT fall back to localhost. 
