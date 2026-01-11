@@ -172,6 +172,23 @@ def tool_page(module_name, tool_name):
                          modules=module_list,
                          user=session.get('user'))
 
+@app.route('/debug-env')
+def debug_env():
+    """Diagnostic route to check environment variables on Vercel."""
+    import os
+    # We mask the sensitive part of the URI for security
+    uri = os.getenv("MONGO_URI", "Not Found")
+    masked_uri = "Found" if uri != "Not Found" else "Not Found"
+    
+    return {
+        "VERCEL": os.getenv("VERCEL", "Not Found"),
+        "MONGO_URI_STATUS": masked_uri,
+        "MONGO_DB_NAME": os.getenv("MONGO_DB_NAME", "Not Found"),
+        "STREAMLIT_URL": os.getenv("STREAMLIT_URL", "Not Found"),
+        "MODULES_PATH_EXISTS": os.path.exists(MODULES_PATH),
+        "PWD": os.getcwd()
+    }
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
 

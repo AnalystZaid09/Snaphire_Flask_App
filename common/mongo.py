@@ -11,18 +11,29 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Prioritize environment variables, then fall back for local development
+# Prioritize environment variables
 MONGO_URI = os.getenv("MONGO_URI")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "report_app")
+IS_VERCEL = os.getenv("VERCEL") == "1"
 
-# If MONGO_URI is missing, it will default to localhost (only if not explicitly set)
+# Logging for debug (visible in Vercel logs)
+if IS_VERCEL:
+    print(f"DEBUG: Vercel environment detected. MONGO_URI found: {'Yes' if MONGO_URI else 'No'}")
+
+# If MONGO_URI is missing
 if not MONGO_URI:
-    MONGO_URI = "mongodb://localhost:27017"
-    print("⚠️  Warning: MONGO_URI environment variable not found. Defaulting to localhost:27017")
+    if IS_VERCEL:
+        # On Vercel, we SHOULD NOT fall back to localhost
+        print("❌ CRITICAL: MONGO_URI missing on Vercel deployment!")
+        # We'll set a dummy URI that won't connect but won't be localhost
+        MONGO_URI = "mongodb://missing-uri-on-vercel:27017"
+    else:
+        MONGO_URI = "mongodb://localhost:27017"
+        print("⚠️  Warning: MONGO_URI environment variable not found. Defaulting to localhost:27017")
 else:
     # Basic check to ensure it doesn't contain a placeholder
     if "<db_password>" in MONGO_URI:
-        print("❌ Error: MONGO_URI contains <db_password> placeholder. Please replace it with your actual password.")
+        print("❌ Error: MONGO_URI contains <db_password> placeholder.")
 
 # Initialize MongoDB client
 try:
