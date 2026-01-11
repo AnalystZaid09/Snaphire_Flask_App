@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}{{ module_display }} — Tools{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">{{ module_display }} — Tools</h1>
+    <p class="page-subtitle">Click an item to open the tool (opens in a new tab).</p>
+</div>
+
+<div class="card-grid">
+    {% for tool in tools %}
+    <div class="card">
+        <div class="card-title">{{ tool.display_name }}</div>
+        <div class="card-url"></div>
+        <a href="{{ url_for('tool_page', module_name=module_name, tool_name=tool.filename) }}" class="open-btn">Open</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,13 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.env
+.ipynb_checkpoints
+data/
+*.xlsx
+*.csv
+# We can exclude modules if they are not needed by the Flask app,
+# but the Flask app currently reads module files to list them.
+# So we keep the modules/ structure but could ignore contents if we didn't need them.

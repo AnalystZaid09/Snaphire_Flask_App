@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Home — Tools Portal</h1>
+    <p class="page-subtitle">Choose a module. Click a card to open the module page (then open individual tools in new
+        tabs).</p>
+</div>
+
+<div class="card-grid">
+    {% for module in modules %}
+    <div class="card">
+        <div class="card-title">{{ module.display_name }}</div>
+        <div class="card-count">{{ module.tool_count }} tools</div>
+        <a href="{{ url_for('module_page', module_name=module.name) }}" class="open-btn">Open</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

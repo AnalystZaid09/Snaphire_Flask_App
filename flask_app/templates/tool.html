@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tool_display }} — {{ module_display }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('module_page', module_name=module_name) }}">← Back to {{ module_display }}</a>
+    </div>
+    <h1 class="page-title">{{ tool_display }}</h1>
+</div>
+
+<div class="tool-container">
+    <iframe src="{{ streamlit_url }}" class="streamlit-iframe" frameborder="0"></iframe>
+</div>
+{% endblock %}

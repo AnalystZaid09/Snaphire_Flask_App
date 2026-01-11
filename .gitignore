@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Streamlit
+.streamlit/
+
+# IDEs
+.vscode/
+.idea/
+
+# Data and report files
+*.xlsx
+*.xls
+*.csv
+data/
+outputs/
+
+# OS
+.DS_Store
+Thumbs.db
