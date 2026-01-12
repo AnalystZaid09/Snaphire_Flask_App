@@ -17,13 +17,16 @@ service nginx start
 
 # 3. Start Streamlit (Internal)
 echo "🎬 Starting Streamlit Engine on port $STREAMLIT_PORT..."
+export DOCKER_ENV=true
+export RENDER=true
 python -m streamlit run streamlit_app.py \
     --server.port=$STREAMLIT_PORT \
     --server.headless=true \
     --server.enableXsrfProtection=false \
     --server.enableCORS=false \
-    --server.baseUrlPath="/st-engine" &
+    --server.baseUrlPath="/st-engine" \
+    --browser.gatherUsageStats=false &
 
 # 4. Start Flask (Internal via Gunicorn)
 echo "🏗️ Starting Flask Portal on port $FLASK_PORT..."
-gunicorn --bind 0.0.0.0:$FLASK_PORT index:app
+gunicorn --bind 0.0.0.0:$FLASK_PORT --timeout 120 index:app
