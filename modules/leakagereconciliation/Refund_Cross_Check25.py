@@ -284,12 +284,11 @@ if all(all_files):
             )
         
         with col3:
-            download_report(
+            download_module_report(
                 df=results['fba_return_tat'],
-                base_filename="fba_return_tat",
-                button_label=f"⬇️ Download FBA Return TAT (≥{int(fba_tat_min)}d)",
-                module_name="leakagereconciliation",
+                module_name=MODULE_NAME,
                 report_name=f"FBA Return TAT (≥{int(fba_tat_min)} days)",
+                button_label=f"⬇️ Download FBA Return TAT (≥{int(fba_tat_min)}d)",
                 key="refund_fba"
             )
 else:

@@ -514,105 +514,41 @@ if st.button("🔍 Run Reconciliation", type="primary", disabled=not (pdf_file a
                 st.subheader("🔎 Item-wise Validation")
                 st.dataframe(report_df, use_container_width=True, hide_index=True)
                 
-                # Download buttons with comprehensive reports
-                st.divider()
-                col_dl1, col_dl2 = st.columns(2)
-                
-                with col_dl1:
-                    # Create comprehensive CSV report with summary
-                    csv_buffer = io.StringIO()
-                    
-                    # Header information
-                    csv_buffer.write("INVOICE RECONCILIATION REPORT\n")
-                    csv_buffer.write(f"Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                    csv_buffer.write(f"Overall Accuracy: {accuracy}%\n")
-                    csv_buffer.write("\n")
-                    
-                    # Invoice Summary
-                    csv_buffer.write("INVOICE SUMMARY\n")
-                    csv_buffer.write(f"Invoice Number,{pdf_summary['Invoice_No']}\n")
-                    csv_buffer.write(f"Sub Total,{pdf_summary['Sub_Total']:.2f}\n")
-                    csv_buffer.write(f"Tax Amount,{pdf_summary['Calculated_Tax']:.2f}\n")
-                    csv_buffer.write(f"Grand Total,{pdf_summary['Grand_Total']:.2f}\n")
-                    csv_buffer.write("\n")
-                    
-                    # Summary Totals Comparison
-                    csv_buffer.write("SUMMARY TOTALS COMPARISON\n")
-                    summary_df = pd.DataFrame(summary_results)
-                    csv_buffer.write(summary_df.to_csv(index=False))
-                    csv_buffer.write("\n")
-                    
-                    # Item-wise Validation
-                    csv_buffer.write("ITEM-WISE VALIDATION\n")
-                    csv_buffer.write(report_df.to_csv(index=False))
-                    
-                    csv_content = csv_buffer.getvalue()
-                    
-                    st.download_button(
-                        label="📥 Download Complete Report (CSV)",
-                        data=csv_content,
-                        file_name=get_download_filename(f"reconciliation_report_{pdf_summary['Invoice_No']}", "csv"),
-                        mime="text/csv",
-                        use_container_width=True
-                    )
-                
-                with col_dl2:
-                    # Create Excel report with multiple sheets
-                    excel_buffer = io.BytesIO()
-                    with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                        # Summary sheet
-                        summary_info = pd.DataFrame({
-                            'Metric': ['Invoice Number', 'Overall Accuracy', 'Sub Total (PDF)', 
-                                      'Tax Amount (PDF)', 'Grand Total (PDF)'],
-                            'Value': [pdf_summary['Invoice_No'], f"{accuracy}%", 
-                                     f"₹{pdf_summary['Sub_Total']:.2f}",
-                                     f"₹{pdf_summary['Calculated_Tax']:.2f}",
-                                     f"₹{pdf_summary['Grand_Total']:.2f}"]
-                        })
-                        summary_info.to_excel(writer, sheet_name='Summary', index=False)
-                        
-                        # Comparison sheet
-                        summary_df = pd.DataFrame(summary_results)
-                        summary_df.to_excel(writer, sheet_name='Totals Comparison', index=False)
-                        
-                        # Item-wise validation sheet
-                        report_df.to_excel(writer, sheet_name='Item Validation', index=False)
-                        
-                        # PDF Data sheet
-                        if not pdf_items.empty:
-                            pdf_items_export = pdf_items[['Material_Code', 'Description', 'Quantity_PDF', 'Amount_Base']].copy()
-                            pdf_items_export.to_excel(writer, sheet_name='PDF Extracted Data', index=False)
-                        
-                        # Excel Data sheet
-                        excel_export = excel_df[['Material Code', 'Description', 'Qty_EXCEL', 'Tax_EXCEL', 'Total_EXCEL']].copy()
-                        excel_export.to_excel(writer, sheet_name='Excel PO Data', index=False)
-                    
-                    excel_content = excel_buffer.getvalue()
-                    
-                    st.download_button(
-                    label="📥 Download Excel Report",
-                    data=excel_content,
-                    file_name=get_download_filename(f"Crompton_Reconciliation_{pdf_summary['Invoice_No']}"),
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-                
                 # Save to MongoDB
                 try:
+                     # This uses the fixed common.mongo utility
                      save_reconciliation_report(
                         collection_name="crompton_reconciliation",
                         invoice_no=pdf_summary['Invoice_No'],
-                        summary_data=pd.DataFrame(summary_results),
+                        summary_data=summary_df,
                         line_items_data=report_df,
                         metadata={
                             "accuracy": accuracy,
                             "file_name_pdf": pdf_file.name,
-                            "file_name_excel": excel_file.name,
-                            "timestamp": str(pd.Timestamp.now())
+                            "file_name_excel": excel_file.name
                         }
                     )
                 except Exception as e:
-                    st.error(f"Failed to auto-save to MongoDB: {e}")
+                    logger.warning(f"Auto-save error: {e}")
+
+                # Standardized download section
+                col_dl1, col_dl2 = st.columns(2)
+                with col_dl1:
+                    download_module_report(
+                        df=report_df,
+                        module_name="reconciliation",
+                        report_name=f"Crompton_Detailed_{pdf_summary['Invoice_No']}",
+                        button_label="📥 Download Detailed Report",
+                        key="dl_crompton_detailed"
+                    )
+                with col_dl2:
+                    download_module_report(
+                        df=summary_df,
+                        module_name="reconciliation",
+                        report_name=f"Crompton_Summary_{pdf_summary['Invoice_No']}",
+                        button_label="📥 Download Summary",
+                        key="dl_crompton_summary"
+                    )
 
             except Exception as e:
                 st.error(f"❌ Error: {str(e)}")

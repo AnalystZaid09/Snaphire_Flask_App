@@ -691,26 +691,14 @@ if business_file and purchase_master_file and inventory_file:
                 else:
                     st.dataframe(Business_Pivot, use_container_width=True, height=600)
                 
-                st.download_button(
-                    "📥 Download Business Pivot (with DOC colors)",
-                    data=to_excel(Business_Pivot, apply_doc_formatting=True),
-                    file_name=get_download_filename("business_pivot"),
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                download_module_report(
+                    df=Business_Pivot,
+                    module_name=MODULE_NAME,
+                    report_name="Business Pivot",
+                    button_label="📥 Download Business Pivot (with DOC colors)",
+                    apply_doc_formatting=True,
+                    key="dl_business_pivot_main"
                 )
-
-                # Save to MongoDB (Best effort)
-                try:
-                    with st.spinner("Saving Business Pivot to Database..."):
-                        save_reconciliation_report(
-                            collection_name="amazon_oos_business",
-                            invoice_no=f"OOS_Report_{datetime.now().strftime('%Y%m%d%H%M')}",
-                            summary_data=pd.DataFrame(), # No specific summary df, passing empty
-                            line_items_data=Business_Pivot, # Saving the main pivot
-                            metadata={"type": "business_pivot"}
-                        )
-                except Exception as e:
-                    # Don't block user flow
-                    print(f"DB Save error: {e}")
             
             with sub_tab2:
                 st.subheader("Out of Stock (OOS) Report")
@@ -722,11 +710,13 @@ if business_file and purchase_master_file and inventory_file:
                 else:
                     st.dataframe(OOS_Report, use_container_width=True, height=600)
                 
-                st.download_button(
-                    "📥 Download OOS Report (with DOC colors)",
-                    data=to_excel(OOS_Report, apply_doc_formatting=True),
-                    file_name=get_download_filename("oos_report"),
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                download_module_report(
+                    df=OOS_Report,
+                    module_name=MODULE_NAME,
+                    report_name="OOS Report",
+                    button_label="📥 Download OOS Report (with DOC colors)",
+                    apply_doc_formatting=True,
+                    key="dl_oos_report_main"
                 )
                 
                 st.subheader("OOS Pivot Table")
@@ -749,20 +739,13 @@ if business_file and purchase_master_file and inventory_file:
                 else:
                     st.dataframe(Overstock_Report, use_container_width=True, height=600)
                 
-                st.download_button(
-                    "📥 Download Overstock Report (with DOC colors)",
-                    data=to_excel(Overstock_Report, apply_doc_formatting=True),
-                    file_name=get_download_filename("overstock_report"),
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-                
-                st.subheader("Overstock Pivot Table")
-                st.dataframe(Overstock_Pivot, use_container_width=True)
-                st.download_button(
-                    "📥 Download Overstock Pivot",
-                    data=to_excel(Overstock_Pivot),
-                    file_name=get_download_filename("overstock_pivot"),
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                download_module_report(
+                    df=Overstock_Report,
+                    module_name=MODULE_NAME,
+                    report_name="Overstock Report",
+                    button_label="📥 Download Overstock Report (with DOC colors)",
+                    apply_doc_formatting=True,
+                    key="dl_overstock_report_main"
                 )
         
         # Tab 2: Inventory Report
@@ -782,24 +765,14 @@ if business_file and purchase_master_file and inventory_file:
                 else:
                     st.dataframe(Inventory_Report_Pivot, use_container_width=True, height=600)
                 
-                st.download_button(
-                    "📥 Download Inventory Report (with DOC colors)",
-                    data=to_excel(Inventory_Report_Pivot, apply_doc_formatting=True),
-                    file_name=get_download_filename("inventory_report"),
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                download_module_report(
+                    df=Inventory_Report_Pivot,
+                    module_name=MODULE_NAME,
+                    report_name="Inventory Report",
+                    button_label="📥 Download Inventory Report (with DOC colors)",
+                    apply_doc_formatting=True,
+                    key="dl_inventory_report_main"
                 )
-
-                # Save to MongoDB (Best effort)
-                try:
-                     save_reconciliation_report(
-                        collection_name="amazon_oos_inventory",
-                        invoice_no=f"Inventory_Report_{datetime.now().strftime('%Y%m%d%H%M')}",
-                        summary_data=pd.DataFrame(),
-                        line_items_data=Inventory_Report_Pivot,
-                        metadata={"type": "inventory_pivot"}
-                    )
-                except Exception as e:
-                    pass
             
             with sub_tab2:
                 st.subheader("OOS Inventory Report")

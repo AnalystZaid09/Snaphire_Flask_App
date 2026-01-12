@@ -24,7 +24,8 @@ try:
         downloads_col, 
         MONGO_CONNECTED,
         save_module_report,
-        save_and_track_report
+        save_and_track_report,
+        save_reconciliation_report
     )
     MONGO_AVAILABLE = MONGO_CONNECTED
 except ImportError:

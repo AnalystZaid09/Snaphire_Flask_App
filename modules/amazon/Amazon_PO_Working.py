@@ -486,14 +486,7 @@ if st.session_state.processed and st.session_state.business_pivot is not None:
                 key="all_products_download"
             )
 
-            # Auto-log results to MongoDB
-            # Prepare results dictionary for auto_log_reports
-            results = {
-                "all_products_report": filtered_df,
-                # Add other dataframes if they are part of the "results" to be logged
-                # e.g., "low_stock_report": low_stock, "ris_detailed": ris_detailed
-            }
-            auto_log_reports(results, MODULE_NAME)
+            # Reports are logged to MongoDB when the user clicks the download button above.
 
 
     with tab2:
@@ -583,33 +576,28 @@ if st.session_state.processed and st.session_state.business_pivot is not None:
         st.divider()
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            ris_output = BytesIO()
-            with pd.ExcelWriter(ris_output, engine='openpyxl') as writer:
-                ris_detailed.to_excel(writer, sheet_name='RIS Detailed', index=False)
-                
-                ris_cluster_summary = df.groupby("RIS Cluster").agg({
+            # Multi-sheet download for RIS Analysis
+            ris_reports = {
+                "RIS Detailed": ris_detailed,
+                "RIS Cluster Summary": df.groupby("RIS Cluster").agg({
                     "RIS Qty": "sum",
                     "(Child) ASIN": "count"
-                }).reset_index()
-                ris_cluster_summary.columns = ["Cluster", "Total RIS Qty", "Product Count"]
-                ris_cluster_summary.to_excel(writer, sheet_name='RIS Cluster Summary', index=False)
-                
-                if "RIS State" in df.columns and df["RIS State"].any():
-                    state_summary_export = df.groupby("RIS State").agg({
-                        "RIS Qty": "sum",
-                        "(Child) ASIN": "count"
-                    }).reset_index()
-                    state_summary_export.columns = ["State", "Total RIS Qty", "Product Count"]
-                    state_summary_export.to_excel(writer, sheet_name='RIS State Summary', index=False)
-            ris_output.seek(0)
-            
-            st.download_button(
-                label="📥 Download RIS Analysis Report (Excel)",
-                data=ris_output,
-                file_name=get_download_filename("ris_analysis"),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                type="primary",
-                use_container_width=True
+                }).reset_index().rename(columns={"(Child) ASIN": "Product Count"}),
+            }
+            if "RIS State" in df.columns and df["RIS State"].any():
+                state_summary_export = df.groupby("RIS State").agg({
+                    "RIS Qty": "sum",
+                    "(Child) ASIN": "count"
+                }).reset_index().rename(columns={"(Child) ASIN": "Product Count"})
+                ris_reports["RIS State Summary"] = state_summary_export
+
+            from common.ui_utils import download_multi_sheet_excel
+            download_multi_sheet_excel(
+                reports=ris_reports,
+                base_filename="ris_analysis",
+                module_name=MODULE_NAME,
+                button_label="📥 Download RIS Analysis Report (Excel)",
+                key="dl_ris_analysis_combined"
             )
     
 else:

@@ -378,27 +378,9 @@ if st.button("🔍 Run Reconciliation", type="primary", use_container_width=True
             
             excel_data = output.getvalue()
             
-            st.download_button(
-                label="📥 Download Complete Reconciliation Report (Excel)",
-                data=output.getvalue(),
-                file_name=get_download_filename(f"Glen_Reconciliation_{global_val['Invoice_No']}"),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-            
-            # Also provide CSV option
-            csv = final_report.to_csv(index=False)
-            st.download_button(
-                label="Download Line Items Only (CSV)",
-                data=csv,
-                file_name=get_download_filename(f"line_items_{global_val['Invoice_No']}", "csv"),
-                mime="text/csv"
-            )
-            
-            # Cleanup
-            os.remove("temp_excel.xlsx")
-            
             # Save to MongoDB
             try:
+                 # This uses the fixed common.mongo utility
                  save_reconciliation_report(
                     collection_name="glen_reconciliation",
                     invoice_no=global_val['Invoice_No'],
@@ -407,12 +389,30 @@ if st.button("🔍 Run Reconciliation", type="primary", use_container_width=True
                     metadata={
                         "accuracy": global_val['Accuracy'],
                         "file_name_pdf": pdf_file.name,
-                        "file_name_excel": excel_file.name,
-                        "timestamp": str(pd.Timestamp.now())
+                        "file_name_excel": excel_file.name
                     }
                 )
             except Exception as e:
-                st.error(f"Failed to auto-save to MongoDB: {e}")
+                logger.warning(f"Auto-save error: {e}")
+
+            # Standardized download section
+            col_dl1, col_dl2 = st.columns(2)
+            with col_dl1:
+                download_module_report(
+                    df=final_report,
+                    module_name="reconciliation",
+                    report_name=f"Glen_Detailed_{global_val['Invoice_No']}",
+                    button_label="📥 Download Detailed Report",
+                    key="dl_glen_detailed"
+                )
+            with col_dl2:
+                download_module_report(
+                    df=pd.DataFrame([global_val]),
+                    module_name="reconciliation",
+                    report_name=f"Glen_Summary_{global_val['Invoice_No']}",
+                    button_label="📥 Download Summary",
+                    key="dl_glen_summary"
+                )
 
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")

@@ -169,15 +169,9 @@ if up_pdf and up_xlsx:
                     detailed_df.to_excel(writer, index=False, sheet_name='Line_Items')
                     pd.DataFrame(summary_results).to_excel(writer, index=False, sheet_name='Summary_Validation')
                 
-                st.download_button(
-                    label="📥 Download Detailed Excel Report",
-                    data=output.getvalue(),
-                    file_name=get_download_filename(f"Comparison_Report_{pdf_sum['Inv_No']}"),
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-
                 # Save to MongoDB
                 try:
+                     # This uses the fixed common.mongo utility
                      save_reconciliation_report(
                         collection_name="nokia_reconciliation",
                         invoice_no=pdf_sum['Inv_No'],
@@ -186,12 +180,30 @@ if up_pdf and up_xlsx:
                         metadata={
                             "accuracy": accuracy,
                             "file_name_pdf": up_pdf.name if up_pdf else "unknown",
-                             "file_name_excel": up_xlsx.name if up_xlsx else "unknown",
-                            "timestamp": str(pd.Timestamp.now())
+                             "file_name_excel": up_xlsx.name if up_xlsx else "unknown"
                         }
                     )
                 except Exception as e:
-                    st.error(f"Failed to auto-save to MongoDB: {e}")
+                    logger.warning(f"Auto-save error: {e}")
+
+                # Standardized download section
+                col_dl1, col_dl2 = st.columns(2)
+                with col_dl1:
+                    download_module_report(
+                        df=detailed_df,
+                        module_name="reconciliation",
+                        report_name=f"Nokia_Detailed_{pdf_sum['Inv_No']}",
+                        button_label="📥 Download Detailed Report",
+                        key="dl_nokia_detailed"
+                    )
+                with col_dl2:
+                    download_module_report(
+                        df=pd.DataFrame(summary_results),
+                        module_name="reconciliation",
+                        report_name=f"Nokia_Summary_{pdf_sum['Inv_No']}",
+                        button_label="📥 Download Summary",
+                        key="dl_nokia_summary"
+                    )
 
             except Exception as e:
                 st.error(f"Error during processing: {e}")

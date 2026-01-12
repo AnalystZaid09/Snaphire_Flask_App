@@ -735,27 +735,9 @@ def main():
             st.session_state.report = report
             st.success("Comparison done")
 
-            # Save to MongoDB
-            try:
-                 save_reconciliation_report(
-                    collection_name="sujata_reconciliation",
-                    invoice_no=report["header"]["pdf_invoice_id"],
-                    summary_data=pd.DataFrame([report["totals"]]),
-                    line_items_data=pd.DataFrame(report["items"]["per_item"]),
-                    metadata={
-                        "overall_accuracy_pct": report["overall_accuracy_pct"],
-                        "invoiceid_vs_po_match": report["header"]["invoiceid_vs_po_match"],
-                        "file_name_pdf": pdf_file.name,
-                        "file_name_excel": excel_file.name,
-                        "timestamp": str(pd.Timestamp.now())
-                    }
-                )
-            except Exception as e:
-                st.error(f"Failed to auto-save to MongoDB: {e}")
-
         except Exception as e:
             st.error(f"Error: {e}")
-            raise
+            logger.error(f"Reconciliation error: {e}")
 
     # Show report if available
     if st.session_state.report:
@@ -774,30 +756,13 @@ def main():
         with col4:
             s = report["items"]["summary"]
             st.metric("Item Qty Match", f"{s['qty_accuracy_pct']}%", f"{s['qty_matches']}/{s['total_items']} qty matched")
-        st.markdown("### Header comparison")
-        pdf_header = st.session_state.pdf_data.get("header", {})
-        matched_row = report["header"].get("matched_excel_row_for_po")
-        cols = st.columns(2)
-        with cols[0]:
-            st.subheader("PDF Invoice")
-            st.json({
-                "Invoice ID": pdf_header.get("InvoiceId"),
-                "Invoice Date": pdf_header.get("InvoiceDate"),
-                "Vendor": pdf_header.get("VendorName"),
-                "Customer": pdf_header.get("CustomerName"),
-                "Total": pdf_header.get("InvoiceTotal")
-            })
-        with cols[1]:
-            st.subheader("Excel PO (matched)")
-            if matched_row:
-                st.json(matched_row)
-            else:
-                st.info("No matching PO row found in Excel")
+
         st.markdown("### Item comparisons")
         s = report["items"]["summary"]
         st.write(f"Total items: {s['total_items']} — Description accuracy: {s['description_start_accuracy_pct']}% — Qty accuracy: {s['qty_accuracy_pct']}%")
+        
+        rows = []
         if report["items"]["per_item"]:
-            rows = []
             for item in report["items"]["per_item"]:
                 rows.append({
                     "PDF Description": item["pdf_description"],
@@ -808,21 +773,26 @@ def main():
                     "Qty Match": item["qty_match"]
                 })
             st.dataframe(pd.DataFrame(rows), use_container_width=True)
-        # download excel
+
+        # Standardized download section
         st.markdown("---")
-        if st.button("📥 Download comparison as Excel"):
-            try:
-                excel_bytes = build_excel_bytes(report, st.session_state.pdf_data, st.session_state.excel_rows)
-                filename_base = get_download_filename(f"Sujata_Reconciliation")
-                st.download_button(
-                    label="📥 Download Detailed Report",
-                    data=excel_bytes,
-                    file_name=filename_base,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-            except Exception as e:
-                st.error(f"Failed to build/download Excel: {e}")
-                st.exception(e)
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            download_module_report(
+                df=pd.DataFrame(rows),
+                module_name="reconciliation",
+                report_name=f"Sujata_Detailed_{report['header']['pdf_invoice_id']}",
+                button_label="📥 Download Detailed Report",
+                key="dl_sujata_detailed"
+            )
+        with col_dl2:
+            download_module_report(
+                df=pd.DataFrame([report["totals"]]),
+                module_name="reconciliation",
+                report_name=f"Sujata_Summary_{report['header']['pdf_invoice_id']}",
+                button_label="📥 Download Summary",
+                key="dl_sujata_summary"
+            )
 
 if __name__ == "__main__":
     main()

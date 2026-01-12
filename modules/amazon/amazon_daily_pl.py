@@ -654,6 +654,19 @@ if transaction_file and pm_file:
             if st.button("Create styled Excel for filtered data (multi-sheet, formatted)"):
                 try:
                     bytes_xlsx = create_styled_workbook_bytes(filtered, header_hex="#0B5394", currency_symbol='₹')
+                    
+                    # Manually track this custom styled report
+                    from common.mongo import save_and_track_report
+                    save_and_track_report(
+                        module_name=MODULE_NAME,
+                        report_name="Daily PL Styled Excel",
+                        df_data=filtered,
+                        user_email=st.session_state.get("user", "anonymous"),
+                        filename=get_download_filename("amazon_profit_analysis_filtered_styled"),
+                        is_download=True,
+                        metadata={"styled": True, "filtered": True}
+                    )
+
                     st.download_button(
                         label="📥 Download Styled Excel (.xlsx) — filtered",
                         data=bytes_xlsx,

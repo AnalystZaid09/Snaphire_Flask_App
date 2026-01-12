@@ -929,42 +929,40 @@ def main():
         excel_report_bytes = save_summary_to_excel_bytes(summary_row, cols_order)
 
         # Save to MongoDB
-        # Prepare metadata and line items
-        # We need to construct line items in a simpler format for DB if needed, or just dump the comparison df
         try:
+             # This uses the fixed common.mongo utility
              save_reconciliation_report(
                 collection_name="dyson_reconciliation",
                 invoice_no=summary_row.get("Your Reference (PDF)", "Unknown"),
-                summary_data=pd.DataFrame([summary_row]),
-                line_items_data=df_comp, # This is the detailed comparison
+                summary_data=summary_df,
+                line_items_data=df_comp,
                 metadata={
-                   "invoice_file": pdf_file.name,
+                    "invoice_file": pdf_file.name,
                     "excel_file": excel_file.name,
-                    "timestamp": str(pd.Timestamp.now())
+                    "accuracy": accuracy
                 }
             )
         except Exception as e:
-            st.error(f"Failed to auto-save to MongoDB: {e}")
+            logger.warning(f"Auto-save error: {e}")
 
-        # The instruction implies replacing the summary Excel download with a consolidated report download.
-        # Assuming 'final_xlsx_data' would be generated elsewhere or is a placeholder for a consolidated report.
-        # For now, I'll use a placeholder for final_xlsx_data to make the code syntactically correct.
-        # In a real scenario, final_xlsx_data would need to be defined.
-        # For this exercise, I'll assume it's a bytes object.
-        final_xlsx_data = b"Placeholder for consolidated report data" # This needs to be properly generated in a real app
-
-        st.download_button(
-            label="📥 Download Consolidated Report",
-            data=final_xlsx_data,
-            file_name=get_download_filename("Dyson_Reconciliation_Report"),
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-        st.download_button(
-            label="📥 Download summary (CSV)",
-            data=summary_df[cols_order].to_csv(index=False).encode("utf-8"),
-            file_name=get_download_filename(f"{os.path.splitext(pdf_file.name)[0]}_summary", "csv"),
-            mime="text/csv",
-        )
+        # Standardized download section
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            download_module_report(
+                df=df_comp,
+                module_name="reconciliation",
+                report_name=f"Dyson_Detailed_{invoice_summary.get('ocr_invoice_ref')}",
+                button_label="📥 Download Detailed Report",
+                key="dl_dyson_detailed"
+            )
+        with col_dl2:
+            download_module_report(
+                df=summary_df,
+                module_name="reconciliation",
+                report_name=f"Dyson_Summary_{invoice_summary.get('ocr_invoice_ref')}",
+                button_label="📥 Download Summary",
+                key="dl_dyson_summary"
+            )
 
         if show_raw_json:
             st.markdown("---")

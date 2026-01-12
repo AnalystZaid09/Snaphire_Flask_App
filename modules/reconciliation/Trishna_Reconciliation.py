@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import os
 from fuzzywuzzy import fuzz
 from common.mongo import save_reconciliation_report
-from common.ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import apply_professional_style, get_download_filename, render_header, download_module_report
 import warnings
 
 # Suppress warnings
@@ -359,12 +359,13 @@ if st.button("🔍 Start Reconciliation", type="primary", disabled=not (pdf_file
                     (summary_acc, line_acc, overall_acc),
                     pdf_details
                 )
-                st.download_button(
-                label="📥 Download Detailed Excel Report",
-                data=excel_data,
-                file_name=get_download_filename(f"Comparison_Report_Trishna_{pdf_details['Invoice_No']}"),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+                download_module_report(
+                    df=line_item_df,
+                    module_name=MODULE_NAME,
+                    report_name=f"Comparison_Report_Trishna_{pdf_details['Invoice_No']}",
+                    button_label="📥 Download Detailed Excel Report",
+                    key="dl_trishna_recon"
+                )
 
                 # Save to MongoDB
                 try:

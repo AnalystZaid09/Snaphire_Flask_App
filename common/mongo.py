@@ -313,72 +313,77 @@ def get_connection_status():
 def save_module_report(module_name: str, report_name: str, df_data=None, 
                        user_email: str = None, metadata: dict = None):
     """
-    Save a report to a module-specific collection.
-    
-    Each module has its own collection (e.g., 'stock_movement', 'amazon', 'flipkart').
-    Reports are saved by their specific name within the collection.
-    
-    Args:
-        module_name: Module name (becomes collection name, e.g., 'stock_movement')
-        report_name: Report name (e.g., 'amazon_business_pivot')
-        df_data: DataFrame or list data to save
-        user_email: User who generated the report
-        metadata: Additional metadata
-    
-    Returns:
-        str: Document ID if successful, None otherwise
+    Save a report to a module-specific collection with structured data.
     """
     if not MONGO_CONNECTED:
-        logger.warning("MongoDB not connected, skipping report save")
         return None
     
     try:
         database = get_db()
-        if database is None:
-            return None
+        if database is None: return None
         
-        # Get or create module collection
         collection = database[module_name]
         
-        # Prepare report data
+        # Convert to structured records
         report_data = None
         row_count = 0
-        col_count = 0
-        
         if df_data is not None:
-            try:
-                if hasattr(df_data, 'to_dict'):
-                    row_count = len(df_data)
-                    col_count = len(df_data.columns) if hasattr(df_data, 'columns') else 0
-                    # Limit to 10K rows
-                    if row_count > 10000:
-                        report_data = df_data.head(10000).to_dict(orient='records')
-                    else:
-                        report_data = df_data.to_dict(orient='records')
-                elif isinstance(df_data, list):
-                    row_count = len(df_data)
-                    report_data = df_data[:10000] if row_count > 10000 else df_data
-            except Exception as e:
-                logger.warning(f"Could not serialize report data: {e}")
+            if hasattr(df_data, 'to_dict'):
+                row_count = len(df_data)
+                # Cap at 10K rows for safety
+                report_data = df_data.head(10000).to_dict(orient='records')
+            elif isinstance(df_data, list):
+                row_count = len(df_data)
+                report_data = df_data[:10000]
         
-        # Create document
         document = {
             "report_name": report_name,
             "generated_at": datetime.now(),
             "generated_by": user_email or "anonymous",
             "row_count": row_count,
-            "column_count": col_count,
             "data": report_data,
             "metadata": metadata or {},
-            "downloads": []  # Track downloads
+            "downloads": []
         }
         
         result = collection.insert_one(document)
-        logger.info(f"✅ Report saved: {report_name} to {module_name} collection")
         return str(result.inserted_id)
-        
     except Exception as e:
-        logger.error(f"MongoDB save error: {e}")
+        logger.error(f"Error saving module report: {e}")
+        return None
+
+def save_reconciliation_report(collection_name: str, invoice_no: str, 
+                               summary_data, line_items_data, metadata: dict = None):
+    """
+    Structured dump for reconciliation reports.
+    Saves both summary levels and detailed comparison lines.
+    """
+    if not MONGO_CONNECTED:
+        return None
+        
+    try:
+        database = get_db()
+        if database is None: return None
+        collection = database[collection_name]
+        
+        # Structure the data
+        summary = summary_data.to_dict(orient='records') if hasattr(summary_data, 'to_dict') else summary_data
+        lines = line_items_data.to_dict(orient='records') if hasattr(line_items_data, 'to_dict') else line_items_data
+        
+        document = {
+            "invoice_no": invoice_no,
+            "generated_at": datetime.now(),
+            "summary": summary,
+            "line_items": lines[:10000] if isinstance(lines, list) else lines, # Limit for size
+            "metadata": metadata or {},
+            "type": "reconciliation"
+        }
+        
+        result = collection.insert_one(document)
+        logger.info(f"✅ Reconciliation report dumped: {invoice_no}")
+        return str(result.inserted_id)
+    except Exception as e:
+        logger.error(f"Error dumping reconciliation report: {e}")
         return None
 
 

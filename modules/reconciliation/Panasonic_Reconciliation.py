@@ -591,16 +591,9 @@ def main():
                     pd.DataFrame([overall]).to_excel(writer, sheet_name='Overall', index=False)
                     pd.DataFrame([acc]).to_excel(writer, sheet_name='Metrics', index=False)
                 towrite.seek(0)
-                bname = get_download_filename(f"recon_{os.path.splitext(pdf_file.name)[0]}")
-                st.download_button(
-                    label=f"Download Excel for {pdf_file.name}",
-                    data=towrite.getvalue(),
-                    file_name=bname,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-
                 # Save to MongoDB
                 try:
+                     # This uses the fixed common.mongo utility
                      save_reconciliation_report(
                         collection_name="panasonic_reconciliation",
                         invoice_no=parsed_header.get("InvoiceId"),
@@ -609,12 +602,30 @@ def main():
                         metadata={
                             "accuracy": acc,
                             "file_name_pdf": pdf_file.name,
-                             "file_name_excel": uploaded_excel.name,
-                            "timestamp": str(pd.Timestamp.now())
+                             "file_name_excel": uploaded_excel.name
                         }
                     )
                 except Exception as e:
-                    st.error(f"Failed to auto-save to MongoDB: {e}")
+                    logger.warning(f"Auto-save error: {e}")
+
+                # Standardized download section
+                col_dl1, col_dl2 = st.columns(2)
+                with col_dl1:
+                    download_module_report(
+                        df=df_res,
+                        module_name="reconciliation",
+                        report_name=f"Panasonic_Detailed_{os.path.splitext(pdf_file.name)[0]}",
+                        button_label="📥 Download Detailed Report",
+                        key=f"dl_panasonic_detailed_{pdf_file.name}"
+                    )
+                with col_dl2:
+                    download_module_report(
+                        df=pd.DataFrame([overall]),
+                        module_name="reconciliation",
+                        report_name=f"Panasonic_Summary_{os.path.splitext(pdf_file.name)[0]}",
+                        button_label="📥 Download Summary",
+                        key=f"dl_panasonic_summary_{pdf_file.name}"
+                    )
 
             except Exception as e:
                 st.warning('Could not prepare Excel download: ' + str(e))

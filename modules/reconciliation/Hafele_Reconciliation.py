@@ -517,17 +517,9 @@ if run_button:
     wb.save(out_io)
     out_io.seek(0)
     
-    st.download_button(
-        label="📥 Download Styled Reconciliation Report",
-        data=out_io,
-        file_name=get_download_filename(f"Hafele_Reconciliation_{pdf_inv_id}"),
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-
-    st.success("Reconciliation complete — improved UI + styled Excel ready for download.")
-
     # Save to MongoDB
     try:
+         # This uses the fixed common.mongo utility
          save_reconciliation_report(
             collection_name="hafele_reconciliation",
             invoice_no=pdf_inv_id,
@@ -535,10 +527,28 @@ if run_button:
             line_items_data=recon_df,
             metadata={
                 "composite_accuracy": composite_accuracy,
-                "file_name_pdf": getattr(uploaded_pdf, "name", "uploaded.pdf"),
-                "timestamp": str(pd.Timestamp.now())
+                "file_name_pdf": getattr(uploaded_pdf, "name", "uploaded.pdf")
             }
         )
     except Exception as e:
-        st.error(f"Failed to auto-save to MongoDB: {e}")
+        logger.warning(f"Auto-save error: {e}")
+
+    # Standardized download section
+    col_dl1, col_dl2 = st.columns(2)
+    with col_dl1:
+        download_module_report(
+            df=recon_df,
+            module_name="reconciliation",
+            report_name=f"Hafele_Detailed_{pdf_inv_id}",
+            button_label="📥 Download Detailed Report",
+            key="dl_hafele_detailed"
+        )
+    with col_dl2:
+        download_module_report(
+            df=metrics_df,
+            module_name="reconciliation",
+            report_name=f"Hafele_Summary_{pdf_inv_id}",
+            button_label="📥 Download Summary",
+            key="dl_hafele_summary"
+        )
 
