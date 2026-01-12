@@ -1,12 +1,9 @@
-# Use official Python 3.11 slim image
-FROM python:3.11-slim
+# Switch to the full Python 3.11 image (it includes build-essential and is more stable on Render)
+FROM python:3.11
 
-# Install Nginx and other system dependencies with more robustness
-RUN apt-get update --fix-missing && apt-get install -y --no-install-recommends \
+# Install only Nginx (full image already has curl and build tools)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx \
-    build-essential \
-    curl \
-    software-properties-common \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
