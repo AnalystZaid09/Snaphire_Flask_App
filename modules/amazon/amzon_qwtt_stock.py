@@ -72,7 +72,8 @@ def process_data(inventory_df, pm_df, sales_df):
     # Add Sales Qty to inventory report
     sales_qty_lookup = sales_inv_pivot.set_index("ASIN")["Sales Qty"].to_dict()
     inv_pivot["Sales Qty"] = inv_pivot["Asin"].map(sales_qty_lookup).fillna(0)
-    inv_pivot["As Per Qty CP"] = (inv_pivot["CP"] * inv_pivot["Sales Qty"]).round(2)
+    inv_pivot["CP as Per Stock"] = (inv_pivot["CP"] * inv_pivot["Stock"]).round(2)
+    inv_pivot["CP as Per Sales Qty"] = (inv_pivot["CP"] * inv_pivot["Sales Qty"]).round(2)
     
     # Create Sales Report
     sales_report = sales_inv_pivot.copy()
@@ -85,11 +86,11 @@ def process_data(inventory_df, pm_df, sales_df):
     # Add Stock to sales report
     sales_stock_lookup = inv_pivot.set_index("Asin")["Stock"].to_dict()
     sales_report["Stock"] = sales_report["ASIN"].map(sales_stock_lookup)
-    sales_report["As Per Qty CP"] = (sales_report["CP"] * sales_report["Sales Qty"]).round(2)
+    sales_report["CP as Per Sales Qty"] = (sales_report["CP"] * sales_report["Sales Qty"]).round(2)
     
     # Reorder columns for sales report
     sales_report = sales_report[["ASIN", "Vendor SKU Codes", "Brand", "Brand Manager",
-                                 "Product Name", "Sales Qty", "CP", "Stock", "As Per Qty CP"]]
+                                 "Product Name", "Sales Qty", "CP", "Stock", "CP as Per Sales Qty"]]
     
     return inv_pivot, sales_report
 
@@ -102,8 +103,8 @@ def add_grand_total(df):
     for col in df_copy.columns:
         if df_copy[col].dtype in ['int64', 'float64']:
             total_value = df_copy[col].sum()
-            # Round CP and As Per Qty CP columns to 2 decimal places
-            if col in ['CP', 'As Per Qty CP']:
+            # Round CP and CP as Per columns to 2 decimal places
+            if col in ['CP', 'CP as Per Sales Qty', 'CP as Per Stock']:
                 total_row[col] = round(total_value, 2)
             else:
                 total_row[col] = total_value
@@ -149,7 +150,7 @@ if inventory_file and pm_file and sales_file and generate_button:
             with col3:
                 st.metric("Total Sales Qty", int(inv_report["Sales Qty"].sum()))
             with col4:
-                st.metric("Total CP Value", f"₹{inv_report['As Per Qty CP'].sum():,.2f}")
+                st.metric("Total CP Value", f"₹{inv_report['CP as Per Stock'].sum():,.2f}")
             
             st.divider()
             
@@ -178,9 +179,9 @@ if inventory_file and pm_file and sales_file and generate_button:
             with col2:
                 st.metric("Total Units Sold", int(sales_report["Sales Qty"].sum()))
             with col3:
-                st.metric("Total Sales Value", f"₹{sales_report['As Per Qty CP'].sum():,.2f}")
+                st.metric("Total Sales Value", f"₹{sales_report['CP as Per Sales Qty'].sum():,.2f}")
             with col4:
-                avg_cp = sales_report['As Per Qty CP'].sum() / sales_report['Sales Qty'].sum()
+                avg_cp = sales_report['CP as Per Sales Qty'].sum() / sales_report['Sales Qty'].sum()
                 st.metric("Avg CP per Unit", f"₹{avg_cp:,.2f}")
             
             st.divider()
@@ -209,7 +210,7 @@ else:
     st.info("👈 Please upload all three required files in the sidebar to begin:")
     st.markdown("""
     1. **Inventory CSV** - QWTT inventory by bin file
-    2. **PM Excel** - Product master file
+    2. **PM Excel** - Purchase master file
     3. **Sales CSV** - QWTT customer shipments file
     """)
     

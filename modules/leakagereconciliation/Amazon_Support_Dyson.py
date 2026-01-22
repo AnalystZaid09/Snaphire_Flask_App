@@ -11,6 +11,7 @@ from common.ui_utils import (
     render_header,
     download_module_report
 )
+from datetime import datetime
 
 MODULE_NAME = "leakagereconciliation"
 
@@ -265,6 +266,21 @@ def render_tab(tab, key):
                             st.session_state[f'{key}_pivot'] = pivot
                             st.session_state[f'{key}_processed'] = processed
                             st.success("✅ Combined data processed successfully!")
+                            # Save to MongoDB
+                            try:
+                                save_reconciliation_report(
+                                    collection_name="amazon_support_dyson",
+                                    invoice_no=f"DYSON_{key}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                                    summary_data={
+                                        "channel": key,
+                                        "total_support": float(pivot["SUPPORT AS PER NET SALE"].sum()) if "SUPPORT AS PER NET SALE" in pivot.columns else 0,
+                                        "total_rows": len(pivot)
+                                    },
+                                    line_items_data=pivot,
+                                    metadata={"report_type": "dyson_support", "channel": key}
+                                )
+                            except Exception:
+                                pass
                 else:
                     st.warning("⚠️ Please upload at least one report ZIP and both PM/Promo files.")
         else:
@@ -292,6 +308,21 @@ def render_tab(tab, key):
                             st.session_state[f'{key}_pivot'] = pivot
                             st.session_state[f'{key}_processed'] = processed
                             st.success(f"✅ {key} data processed successfully!")
+                            # Save to MongoDB
+                            try:
+                                save_reconciliation_report(
+                                    collection_name="amazon_support_dyson",
+                                    invoice_no=f"DYSON_{key}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                                    summary_data={
+                                        "channel": key,
+                                        "total_support": float(pivot["SUPPORT AS PER NET SALE"].sum()) if "SUPPORT AS PER NET SALE" in pivot.columns else 0,
+                                        "total_rows": len(pivot)
+                                    },
+                                    line_items_data=pivot,
+                                    metadata={"report_type": "dyson_support", "channel": key}
+                                )
+                            except Exception:
+                                pass
                 else:
                     st.warning("⚠️ Please upload all three files to proceed.")
         

@@ -33,7 +33,7 @@ c1, c2 = st.columns(2)
 with c1:
     orders_file = st.file_uploader("Upload Orders File", type=["xlsx"])
 with c2:
-    pm_file = st.file_uploader("Upload Product Master File", type=["xlsx"])
+    pm_file = st.file_uploader("Upload Purchase Master File", type=["xlsx"])
 
 # --------------------------------------------------
 # Generate button

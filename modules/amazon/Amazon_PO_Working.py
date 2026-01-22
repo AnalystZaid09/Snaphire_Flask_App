@@ -37,9 +37,9 @@ if 'business_pivot' not in st.session_state:
 # Sidebar for file uploads
 with st.sidebar:
     st.header("📁 Upload Files")
-
+    
     role = st.selectbox("Select Role", ["Amazon Manager", "Manager"])
-
+    
     if role == "Amazon Manager":
         business_report_file = st.file_uploader(
             "Business Report CSV",
@@ -126,7 +126,7 @@ with st.sidebar:
 if process_button:
     # Determine required files based on role
     required_files = [business_report_file, pm_file, inventory_file, ris_file]
-    if role == "Amazon Manager":
+    if role == "Portal":
         required_files.append(state_fc_file)
 
     if not all(required_files):
@@ -218,7 +218,7 @@ if process_button:
 
                 # Load RIS Data
                 ris_data = pd.read_excel(ris_file)
-
+                
                 if role == "Amazon Manager":
                     ris_data["Shipped Quantity"] = pd.to_numeric(
                         ris_data["Shipped Quantity"], errors="coerce"
@@ -355,7 +355,7 @@ if process_button:
                         business_pivot = business_pivot.drop(columns=["_mapping_key"])
 
                 # Load State FC mapping
-                if role == "Amazon Manager":
+                if role == "Portal":
                     state_fc = pd.read_excel(state_fc_file, sheet_name="Sheet1")
                     ris_state_map = state_fc.set_index("Cluster")["State"].to_dict()
 

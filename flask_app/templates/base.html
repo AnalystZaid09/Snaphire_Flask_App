@@ -25,6 +25,9 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-section">
+                <a href="{{ url_for('home') }}" class="sidebar-item home-btn" style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; font-weight: 600; margin-bottom: 15px; border-radius: 8px;">
+                    🏠 Home
+                </a>
                 <div class="sidebar-title">MODULES</div>
                 {% for module in modules %}
                 <a href="{{ url_for('module_page', module_name=module.name) }}"

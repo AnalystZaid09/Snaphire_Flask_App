@@ -15,7 +15,7 @@ MODULE_NAME = "amazon"
 
 # Page configuration
 st.set_page_config(
-    page_title="RIS Analysis Dashboard",
+    page_title="AmazonRIS Analysis Dashboard",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -100,8 +100,7 @@ STATE_RULES = {
 }
 
 # Title
-# Title
-render_header("RIS Analysis Dashboard")
+render_header("AmazonRIS Analysis Dashboard")
 st.markdown("---")
 
 # Initialize session state
@@ -109,6 +108,10 @@ if 'processed_data' not in st.session_state:
     st.session_state.processed_data = None
 if 'all_results' not in st.session_state:
     st.session_state.all_results = {}
+if 'manager_data' not in st.session_state:
+    st.session_state.manager_data = None
+if 'manager_results' not in st.session_state:
+    st.session_state.manager_results = {}
 
 # Sidebar for file upload
 with st.sidebar:
@@ -191,7 +194,20 @@ with st.sidebar:
                         if ris_df[col].dtype == 'object':
                             ris_df[col] = ris_df[col].astype(str)
                     
+                    # Store processed data
                     st.session_state.processed_data = ris_df
+                    
+                    # Save to MongoDB
+                    try:
+                         save_reconciliation_report(
+                            collection_name="amazon_ris",
+                            invoice_no=f"RIS_{pd.Timestamp.now().strftime('%Y%m%d%H%M')}",
+                            summary_data=pd.DataFrame([{"Total Records": len(ris_df)}]),
+                            line_items_data=ris_df,
+                            metadata={"type": "ris_analysis"}
+                        )
+                    except Exception as e:
+                        pass
                     
                     # Generate all pivots
                     results = {}
@@ -495,6 +511,111 @@ if st.session_state.processed_data is not None:
                 key="dl_ris_state_fc"
             )
 
+
+elif st.session_state.manager_data is not None:
+    # Manager Data Display with Tabs
+    manager_tabs = st.tabs([
+        "📋 Processed Data",
+        "🏷️ Brand-wise",
+        "🔖 ASIN-wise",
+        "🏢 Cluster-wise",
+        "📊 Cluster-ASIN"
+    ])
+    
+    # Tab 1: Processed Data
+    with manager_tabs[0]:
+        st.header("📊 Manager RIS Week Data")
+        df = st.session_state.manager_data
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Records", f"{len(df):,}")
+        with col2:
+            if "Non RIS" in df.columns:
+                non_ris_total = pd.to_numeric(df["Non RIS"], errors='coerce').sum()
+                st.metric("Total Non RIS", f"{non_ris_total:,.0f}")
+        with col3:
+            # Find the RIS column
+            ris_col = None
+            for col in df.columns:
+                col_lower = col.lower().replace(" ", "").replace("_", "")
+                if col_lower in ['risunits', 'ris', 'risqty', 'risquantity', 'ris_units']:
+                    ris_col = col
+                    break
+            if ris_col:
+                ris_total = pd.to_numeric(df[ris_col], errors='coerce').sum()
+                st.metric("Total RIS", f"{ris_total:,.0f}")
+        
+        st.markdown("---")
+        st.dataframe(df, use_container_width=True, height=500)
+        
+        st.download_button(
+            label="📥 Download Manager RIS Data (Excel)",
+            data=to_excel(df),
+            file_name=get_download_filename("manager_ris_week_data"),
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    
+    # Tab 2: Brand-wise Pivot
+    with manager_tabs[1]:
+        st.header("🏷️ Brand-wise Analysis")
+        if 'brand_wise' in st.session_state.manager_results:
+            df = st.session_state.manager_results['brand_wise']
+            st.dataframe(df, use_container_width=True, height=400)
+            st.download_button(
+                label="📥 Download Brand-wise Analysis (Excel)",
+                data=to_excel(df),
+                file_name=get_download_filename("manager_brand_wise"),
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        else:
+            st.warning("⚠️ Brand-wise pivot not available. Ensure Brand column is mapped from PM file.")
+    
+    # Tab 3: ASIN-wise Pivot
+    with manager_tabs[2]:
+        st.header("🔖 ASIN-wise Analysis")
+        if 'asin_wise' in st.session_state.manager_results:
+            df = st.session_state.manager_results['asin_wise']
+            st.dataframe(df, use_container_width=True, height=400)
+            st.download_button(
+                label="📥 Download ASIN-wise Analysis (Excel)",
+                data=to_excel(df),
+                file_name=get_download_filename("manager_asin_wise"),
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        else:
+            st.warning("⚠️ ASIN-wise pivot not available. Ensure ASIN column exists in RIS Week file.")
+    
+    # Tab 4: Cluster-wise Pivot
+    with manager_tabs[3]:
+        st.header("🏢 Cluster-wise Analysis")
+        if 'cluster_wise' in st.session_state.manager_results:
+            df = st.session_state.manager_results['cluster_wise']
+            st.dataframe(df, use_container_width=True, height=400)
+            st.download_button(
+                label="📥 Download Cluster-wise Analysis (Excel)",
+                data=to_excel(df),
+                file_name=get_download_filename("manager_cluster_wise"),
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        else:
+            st.warning("⚠️ Cluster-wise pivot not available. Ensure cust_cluster column exists in RIS Week file.")
+    
+    # Tab 5: Cluster-ASIN Pivot
+    with manager_tabs[4]:
+        st.header("📊 Cluster-ASIN Analysis")
+        if 'cluster_asin' in st.session_state.manager_results:
+            df = st.session_state.manager_results['cluster_asin']
+            st.dataframe(df, use_container_width=True, height=400)
+            st.download_button(
+                label="📥 Download Cluster-ASIN Analysis (Excel)",
+                data=to_excel(df),
+                file_name=get_download_filename("manager_cluster_asin"),
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        else:
+            st.warning("⚠️ Cluster-ASIN pivot not available. Ensure both cust_cluster and ASIN columns exist.")
+
 else:
     # Welcome screen
     st.info("👋 Welcome! Please upload the required files using the sidebar to begin analysis.")
@@ -520,7 +641,7 @@ else:
     with col3:
         st.markdown("""
         ### 📦 PM.xlsx
-        - Product master data
+        - Purchase master data
         - Brand information
         - ASIN mappings
         """)
@@ -528,13 +649,19 @@ else:
     st.markdown("---")
     st.markdown("""
     ### 📊 Analysis Features:
-    - **Processed Data**: Complete dataset with RIS status calculations
-    - **Brand-wise RIS**: Performance metrics by brand
-    - **ASIN-wise RIS**: Product-level analysis
-    - **Cluster-wise RIS**: FC cluster performance
-    - **Cluster-Brand Analysis**: Combined cluster and brand insights (with Grand Total)
-    - **State Cluster Analysis**: State-level cluster metrics
-    - **State-FC Analysis**: Detailed state and FC mapping (with Grand Total)
+    
+    **Portal:**
+    - Processed Data: Complete dataset with RIS status calculations
+    - Brand-wise RIS: Performance metrics by brand
+    - ASIN-wise RIS: Product-level analysis
+    - Cluster-wise RIS: FC cluster performance
+    - Cluster-Brand Analysis: Combined cluster and brand insights
+    - State Cluster Analysis: State-level cluster metrics
+    - State-FC Analysis: Detailed state and FC mapping
+    
+    **Manager:**
+    - RIS Week Data with Non RIS calculations
+    - Brand, Brand Manager, Vendor SKU mappings from PM file
     
     All reports can be downloaded as Excel files! 📥
 

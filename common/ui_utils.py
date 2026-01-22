@@ -38,7 +38,30 @@ except ImportError:
 
 
 def apply_professional_style():
-    """Applies professional CSS styling."""
+    """Applies professional CSS styling and adds Home button."""
+    # Add Home button to sidebar
+    st.sidebar.markdown("""
+        <a href="http://localhost:5000" target="_top" style="
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(30, 64, 175, 0.3);
+            transition: all 0.2s ease;
+        " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+            🏠 Home
+        </a>
+    """, unsafe_allow_html=True)
+    
+    st.sidebar.markdown("---")
+    
     st.markdown("""
         <style>
         .report-header {

@@ -35,8 +35,8 @@ def add_grand_total(df):
     for col in df_copy.columns:
         if df_copy[col].dtype in ['int64', 'float64']:
             total_value = df_copy[col].sum()
-            # Round CP and As Per Qty CP columns to 2 decimal places
-            if col in ['CP', 'As Per Qty CP']:
+            # Round CP and CP as Per columns to 2 decimal places
+            if col in ['CP', 'CP as Per Sales Qty', 'CP as Per Stock']:
                 total_row[col] = round(total_value, 2)
             else:
                 total_row[col] = total_value
@@ -108,13 +108,13 @@ def process_flipkart_data(sales_df, pm_df, inventory_df):
     stock_map = inventory_pivot.set_index("sku")["Stock"].to_dict()
     sales_pivot["Stock"] = sales_pivot["SKU"].map(stock_map)
     
-    # Calculate As Per Qty CP for sales report
-    sales_pivot["As Per Qty CP"] = (sales_pivot["CP"] * sales_pivot["Sales Qty"]).round(2)
+    # Calculate CP as Per Sales Qty for sales report
+    sales_pivot["CP as Per Sales Qty"] = (sales_pivot["CP"] * sales_pivot["Sales Qty"]).round(2)
     
     # Reorder columns for sales report
     sales_report = sales_pivot[[
         "SKU", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager",
-        "Product Name", "Sales Qty", "CP", "Stock", "As Per Qty CP"
+        "Product Name", "Sales Qty", "CP", "Stock", "CP as Per Sales Qty"
     ]]
     
     # Process Inventory Report
@@ -132,13 +132,14 @@ def process_flipkart_data(sales_df, pm_df, inventory_df):
     sale_qty_inv_map = sales_pivot.set_index("SKU")["Sales Qty"].to_dict()
     inventory_report["Sales Qty"] = inventory_report["sku"].map(sale_qty_inv_map)
     
-    # Calculate As Per Qty CP for inventory report
-    inventory_report["As Per Qty CP"] = (inventory_report["CP"] * inventory_report["Sales Qty"]).round(2)
+    # Calculate CP as Per Stock and CP as Per Sales Qty for inventory report
+    inventory_report["CP as Per Stock"] = (inventory_report["CP"] * inventory_report["Stock"]).round(2)
+    inventory_report["CP as Per Sales Qty"] = (inventory_report["CP"] * inventory_report["Sales Qty"]).round(2)
     
     # Reorder columns for inventory report
     inventory_report = inventory_report[[
         "sku", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager",
-        "Product Name", "Stock", "Sales Qty", "CP", "As Per Qty CP"
+        "Product Name", "Stock", "Sales Qty", "CP", "CP as Per Stock", "CP as Per Sales Qty"
     ]]
     
     return sales_report, inventory_report
@@ -171,9 +172,9 @@ if sales_file and pm_file and inventory_file and generate_button:
             with col2:
                 st.metric("Total Units Sold", int(sales_report["Sales Qty"].sum()))
             with col3:
-                st.metric("Total Sales Value", f"₹{sales_report['As Per Qty CP'].sum():,.2f}")
+                st.metric("Total Sales Value", f"₹{sales_report['CP as Per Sales Qty'].sum():,.2f}")
             with col4:
-                avg_cp = sales_report['As Per Qty CP'].sum() / sales_report['Sales Qty'].sum()
+                avg_cp = sales_report['CP as Per Sales Qty'].sum() / sales_report['Sales Qty'].sum()
                 st.metric("Avg CP per Unit", f"₹{avg_cp:,.2f}")
             
             st.divider()
@@ -205,7 +206,7 @@ if sales_file and pm_file and inventory_file and generate_button:
                 sales_qty_total = inventory_report["Sales Qty"].sum()
                 st.metric("Total Sales Qty", int(sales_qty_total) if pd.notna(sales_qty_total) else 0)
             with col4:
-                cp_total = inventory_report['As Per Qty CP'].sum()
+                cp_total = inventory_report['CP as Per Stock'].sum()
                 st.metric("Total CP Value", f"₹{cp_total:,.2f}" if pd.notna(cp_total) else "₹0.00")
             
             st.divider()
