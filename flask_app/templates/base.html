@@ -5,17 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}IBI Ops Super App — Tools Portal{% endblock %}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 
 <body>
     <!-- Header -->
     <header class="header">
-        <div class="header-title">Amazon Ops Super App — Tools Portal</div>
+        <div class="header-title">IBI Ops Super App</div>
         <div class="header-user">
             {% if user %}
-            <span style="color: #94a3b8; margin-right: 1rem;">👤 {{ user }}</span>
+            <span>👤 {{ user }}</span>
             <a href="{{ url_for('logout') }}" class="profile-btn" style="text-decoration: none;">🚪 Logout</a>
             {% endif %}
         </div>
@@ -25,13 +25,18 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-section">
-                <a href="{{ url_for('home') }}" class="sidebar-item home-btn" style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; font-weight: 600; margin-bottom: 15px; border-radius: 8px;">
-                    🏠 Home
+                <a href="{{ url_for('home') }}" class="sidebar-item home-btn">
+                    🏠 Dashboard
                 </a>
-                <div class="sidebar-title">MODULES</div>
+                <div class="sidebar-title">Modules</div>
                 {% for module in modules %}
                 <a href="{{ url_for('module_page', module_name=module.name) }}"
                     class="sidebar-item {% if module.active %}active{% endif %}">
+                    {% if 'amazon' in module.name.lower() %}📦{% endif %}
+                    {% if 'flipkart' in module.name.lower() %}🛒{% endif %}
+                    {% if 'reconciliation' in module.name.lower() %}🔄{% endif %}
+                    {% if 'leakage' in module.name.lower() %}🔍{% endif %}
+                    {% if 'stock' in module.name.lower() %}📈{% endif %}
                     {{ module.display_name }}
                 </a>
                 {% endfor %}
