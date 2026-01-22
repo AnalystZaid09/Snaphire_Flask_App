@@ -4,9 +4,9 @@ import numpy as np
 from io import BytesIO
 import base64
 import gc
-from mongo_utils import save_reconciliation_report
+from common.mongo import save_reconciliation_report
 from datetime import datetime
-from ui_utils import apply_professional_style, render_header
+from common.ui_utils import apply_professional_style, render_header
 
 # Page configuration is handled by the main app
 apply_professional_style()

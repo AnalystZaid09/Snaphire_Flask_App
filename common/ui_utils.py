@@ -64,13 +64,67 @@ def apply_professional_style():
     
     st.markdown("""
         <style>
+        /* ======== SIDEBAR ALWAYS VISIBLE ======== */
+        /* Hide the collapse arrow button completely */
+        [data-testid="collapsedControl"] {
+            display: none !important;
+            visibility: hidden !important;
+        }
+        button[kind="header"] {
+            display: none !important;
+        }
+        
+        /* Force sidebar to always be visible */
+        [data-testid="stSidebar"] {
+            min-width: 320px !important;
+            max-width: 350px !important;
+            transform: none !important;
+            position: relative !important;
+            z-index: 1 !important;
+        }
+        [data-testid="stSidebar"][aria-expanded="false"] {
+            display: block !important;
+            min-width: 320px !important;
+            margin-left: 0 !important;
+            transform: translateX(0) !important;
+        }
+        section[data-testid="stSidebar"] {
+            width: 320px !important;
+            min-width: 320px !important;
+            transform: none !important;
+        }
+        section[data-testid="stSidebar"] > div:first-child {
+            width: 320px !important;
+            min-width: 320px !important;
+        }
+        
+        /* Sidebar background - light gray */
+        [data-testid="stSidebar"] > div:first-child {
+            background-color: #f8fafc !important;
+        }
+        
+        /* ======== WHITE BACKGROUND FOR MAIN CONTENT ======== */
+        .stApp {
+            background-color: #ffffff !important;
+        }
+        .main .block-container {
+            background-color: #ffffff !important;
+        }
+        [data-testid="stAppViewContainer"] {
+            background-color: #ffffff !important;
+        }
+        .stApp > header {
+            background-color: #ffffff !important;
+        }
+        
+        /* ======== REPORT HEADER STYLING ======== */
         .report-header {
             text-align: center;
             padding: 1rem 0;
             margin-bottom: 1.5rem;
         }
         .report-title {
-            color: #f8fafc;
+            color: #1e40af;
             font-size: 1.5rem;
             font-weight: 600;
         }
