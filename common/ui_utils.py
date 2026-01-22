@@ -151,12 +151,239 @@ def to_multi_sheet_excel(reports: Dict[str, pd.DataFrame]) -> bytes:
     return output.getvalue()
 
 
+def _process_pending_mongo_logs():
+    """Process any pending MongoDB logs from previous download clicks."""
+    if "pending_mongo_logs" not in st.session_state:
+        st.session_state.pending_mongo_logs = []
+        return
+    
+    pending = st.session_state.pending_mongo_logs
+    if not pending:
+        return
+    
+    # Process all pending logs
+    for log_entry in pending:
+        try:
+            if log_report_download:
+                success = log_report_download(
+                    user_email=log_entry.get("user", "anonymous"),
+                    module=log_entry.get("module", "unknown"),
+                    report_name=log_entry.get("report_name", "Report"),
+                    filename=log_entry.get("filename", "report.xlsx"),
+                    df_data=log_entry.get("df_data"),
+                    row_count=log_entry.get("row_count", 0),
+                    col_count=log_entry.get("col_count", 0),
+                    file_size=log_entry.get("file_size", 0),
+                    sheet_name=log_entry.get("sheet_name")
+                )
+                if success:
+                    logger.info(f"✅ Logged to MongoDB: {log_entry.get('report_name')}")
+        except Exception as e:
+            logger.warning(f"MongoDB log error: {e}")
+    
+    # Clear processed logs
+    st.session_state.pending_mongo_logs = []
+
+
+def _queue_mongo_log(df: pd.DataFrame, filename: str, module_name: str, 
+                     report_name: str, file_size: int, sheet_name: str = None):
+    """Queue a MongoDB log entry to be processed on next rerun."""
+    if "pending_mongo_logs" not in st.session_state:
+        st.session_state.pending_mongo_logs = []
+    
+    user = st.session_state.get("user", "anonymous")
+    
+    log_entry = {
+        "user": user,
+        "module": module_name,
+        "report_name": report_name,
+        "filename": filename,
+        "df_data": df,
+        "row_count": len(df) if hasattr(df, '__len__') else 0,
+        "col_count": len(df.columns) if hasattr(df, 'columns') else 0,
+        "file_size": file_size,
+        "sheet_name": sheet_name
+    }
+    
+    st.session_state.pending_mongo_logs.append(log_entry)
+    logger.info(f"📋 Queued for MongoDB: {report_name}")
+
+
+# =============================================================================
+# AUTO-SAVE GENERATED REPORTS (NEW - Immediate save on generation)
+# =============================================================================
+
+def _get_saved_reports_key(module_name: str) -> str:
+    """Get session state key for tracking saved reports."""
+    return f"_saved_reports_{module_name}"
+
+
+def auto_save_generated_reports(reports: Dict[str, pd.DataFrame], module_name: str,
+                                 show_toast: bool = True, tool_name: str = None) -> int:
+    """
+    AUTO-SAVE all generated reports to MongoDB immediately when called.
+    
+    Args:
+        reports: Dict of {report_name: DataFrame}
+        module_name: Module name (e.g., 'amazon')
+        show_toast: Whether to show success toast
+        tool_name: Tool name (auto-detected if not provided)
+    """
+    if not MONGO_AVAILABLE or not log_report_download:
+        logger.warning("MongoDB not available for auto-save")
+        return 0
+    
+    # Auto-detect tool name from calling file if not provided
+    if tool_name is None:
+        try:
+            import inspect
+            import os
+            frame = inspect.currentframe()
+            caller_frame = frame.f_back
+            if caller_frame:
+                caller_file = caller_frame.f_code.co_filename
+                tool_name = os.path.basename(caller_file).replace('.py', '').replace('_', ' ').title()
+        except:
+            tool_name = "Unknown Tool"
+            
+    # Track which reports have been saved this session to avoid duplicates
+    saved_key = _get_saved_reports_key(module_name)
+    if saved_key not in st.session_state:
+        st.session_state[saved_key] = set()
+    
+    user = st.session_state.get("user", "anonymous")
+    success_count = 0
+    new_saves = []
+    
+    for report_name, df in reports.items():
+        # Handle cases where df might be a list or other object
+        row_count = len(df) if hasattr(df, '__len__') else 0
+        
+        # Skip if already saved this session
+        report_hash = f"{report_name}_{row_count}"
+        if report_hash in st.session_state[saved_key]:
+            continue
+        
+        try:
+            filename = f"auto_{get_download_filename(report_name.replace(' ', '_'))}"
+            col_count = len(df.columns) if hasattr(df, 'columns') else 0
+            
+            success = log_report_download(
+                user_email=user,
+                module=module_name,
+                report_name=report_name,
+                filename=filename,
+                df_data=df,
+                row_count=row_count,
+                col_count=col_count,
+                metadata={
+                    "auto_saved": True, 
+                    "generated_at": datetime.now().isoformat(),
+                    "tool_name": tool_name
+                }
+            )
+            
+            if success:
+                success_count += 1
+                new_saves.append(report_name)
+                st.session_state[saved_key].add(report_hash)
+                logger.info(f"✅ Auto-saved: {report_name} from {tool_name} ({module_name})")
+                
+        except Exception as e:
+            logger.warning(f"Auto-save error for {report_name}: {e}")
+    
+    if new_saves and show_toast:
+        st.toast(f"💾 {len(new_saves)} reports saved to database", icon="✅")
+    
+    return success_count
+
+
+def _process_pending_download_history():
+    """Process any pending download history logs from previous clicks."""
+    if "pending_download_history" not in st.session_state:
+        st.session_state.pending_download_history = []
+        return
+    
+    pending = st.session_state.pending_download_history
+    if not pending:
+        return
+    
+    try:
+        from common.mongo import db as mongo_db
+        if mongo_db is None:
+            return
+        
+        for record in pending:
+            try:
+                mongo_db.download_history.insert_one(record)
+                logger.info(f"📥 Download history saved: {record.get('report_name')}")
+            except Exception as e:
+                logger.warning(f"Error saving download history: {e}")
+        
+        # Clear processed logs
+        st.session_state.pending_download_history = []
+    except Exception as e:
+        logger.warning(f"Process pending download history error: {e}")
+
+
+def log_download_event(module_name: str, report_name: str, filename: str, tool_name: str = None):
+    """
+    Queue download event for logging to download_history collection.
+    
+    Args:
+        module_name: Module name
+        report_name: Report name
+        filename: Downloaded filename
+        tool_name: Name of the tool
+    """
+    if "pending_download_history" not in st.session_state:
+        st.session_state.pending_download_history = []
+    
+    user = st.session_state.get("user", "anonymous")
+    
+    # Create lightweight download record
+    download_record = {
+        "user_email": user,
+        "report_name": report_name,
+        "tool_name": tool_name or "Unknown Tool",
+        "module_name": module_name,
+        "filename": filename,
+        "downloaded_at": datetime.now()
+    }
+    
+    # Queue for processing on next rerun
+    st.session_state.pending_download_history.append(download_record)
+    logger.info(f"📋 Queued download history: {report_name}")
+    
+    # Also try immediate save
+    if MONGO_AVAILABLE:
+        try:
+            from common.mongo import history_col
+            if history_col is not None:
+                result = history_col.insert_one(download_record.copy())
+                if result.inserted_id:
+                    st.toast(f"✅ Download logged: {report_name}", icon="📊")
+                    logger.info(f"📥 Immediate download history save: {report_name}")
+            else:
+                # Try getting it again
+                from common.mongo import get_download_history_collection
+                col = get_download_history_collection()
+                if col is not None:
+                    col.insert_one(download_record.copy())
+                    st.toast(f"✅ Download logged: {report_name}", icon="📊")
+        except Exception as e:
+            logger.warning(f"Immediate download history error: {e}")
+            st.toast(f"⚠️ Could not log download: {str(e)[:50]}", icon="⚠️")
+
+
+
 def download_report(df: pd.DataFrame, base_filename: str, button_label: str = "📥 Download Report",
                     module_name: str = "unknown", report_name: str = "Report",
                     apply_doc_formatting: bool = False, key: str = None,
                     sheet_name: str = "Report") -> bool:
     """
     Creates download button and logs full report data to MongoDB when downloaded.
+    Uses session state to ensure logging happens even with Streamlit reruns.
     
     Args:
         df: DataFrame to download
@@ -171,6 +398,9 @@ def download_report(df: pd.DataFrame, base_filename: str, button_label: str = "�
     Returns:
         True if download was clicked, False otherwise
     """
+    # Process any pending logs from previous clicks
+    _process_pending_mongo_logs()
+    
     # Generate filename with timestamp
     filename = get_download_filename(base_filename)
     
@@ -178,16 +408,19 @@ def download_report(df: pd.DataFrame, base_filename: str, button_label: str = "�
     excel_data = to_excel(df, apply_doc_formatting, sheet_name)
     
     # Create download button
+    btn_key = key or f"download_{base_filename}_{hash(report_name) % 10000}"
     downloaded = st.download_button(
         label=button_label,
         data=excel_data,
         file_name=filename,
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key=key or f"download_{base_filename}_{datetime.now().timestamp()}"
+        key=btn_key
     )
     
-    # Log full report to MongoDB when button is clicked
+    # Queue log for MongoDB when button is clicked (will be processed on rerun)
     if downloaded:
+        _queue_mongo_log(df, filename, module_name, report_name, len(excel_data), sheet_name)
+        # Also try immediate logging
         _log_download(df, filename, module_name, report_name, len(excel_data), sheet_name)
     
     return downloaded
@@ -354,24 +587,90 @@ def create_download_section(reports: Dict[str, pd.DataFrame], module_name: str,
 
 def download_module_report(df: pd.DataFrame, module_name: str, report_name: str,
                            button_label: str = "📥 Download", key: str = None,
-                           apply_doc_formatting: bool = False) -> bool:
+                           apply_doc_formatting: bool = False,
+                           tool_name: str = None) -> bool:
     """
-    Download button that saves report to module-specific collection.
+    Download button that AUTOMATICALLY saves report to MongoDB when called.
+    Also logs download event when user clicks the download button.
     
-    Each module has its own collection (e.g., 'stock_movement').
-    Reports are saved by name with download tracking.
+    Uses session state to avoid duplicate saves on Streamlit reruns.
     
     Args:
         df: DataFrame to download
-        module_name: Module/collection name (e.g., 'stock_movement')
-        report_name: Report name (e.g., 'amazon_business_pivot')
+        module_name: Module/collection name (e.g., 'amazon')
+        report_name: Report name (e.g., 'Brand Manager Analysis')
         button_label: Label for download button
         key: Unique key for the button
         apply_doc_formatting: Whether to apply DOC column formatting
+        tool_name: Name of the tool that generated this report (auto-detected if not provided)
     
     Returns:
         True if download was clicked
     """
+    # Handle Dict input (multi-sheet) - convert to single DataFrame or handle specially
+    if isinstance(df, dict):
+        # If passed a dict, just use the first one or combine
+        if len(df) > 0:
+            first_key = list(df.keys())[0]
+            df = df[first_key]
+        else:
+            return False
+    
+    # Auto-detect tool name from calling file if not provided
+    if tool_name is None:
+        try:
+            import inspect
+            import os
+            # Get the caller's frame (skip this function)
+            frame = inspect.currentframe()
+            caller_frame = frame.f_back
+            if caller_frame:
+                caller_file = caller_frame.f_code.co_filename
+                # Extract filename without extension and format nicely
+                tool_name = os.path.basename(caller_file).replace('.py', '').replace('_', ' ').title()
+        except:
+            tool_name = "Unknown Tool"
+    
+    # Process any pending logs from previous clicks
+    _process_pending_mongo_logs()
+    _process_pending_download_history()
+    
+    # ========= AUTO-SAVE: Save to MongoDB when function is called =========
+    saved_key = _get_saved_reports_key(module_name)
+    if saved_key not in st.session_state:
+        st.session_state[saved_key] = set()
+    
+    # Create unique hash for this report (based on name and row count)
+    report_hash = f"{report_name}_{len(df) if hasattr(df, '__len__') else 0}"
+    
+    # Auto-save if not already saved this session
+    if report_hash not in st.session_state[saved_key] and MONGO_AVAILABLE and log_report_download:
+        try:
+            user = st.session_state.get("user", "anonymous")
+            auto_filename = f"auto_{get_download_filename(report_name.replace(' ', '_'))}"
+            
+            success = log_report_download(
+                user_email=user,
+                module=module_name,
+                report_name=report_name,
+                filename=auto_filename,
+                df_data=df,
+                row_count=len(df) if hasattr(df, '__len__') else 0,
+                col_count=len(df.columns) if hasattr(df, 'columns') else 0,
+                metadata={
+                    "auto_saved": True, 
+                    "generated_at": datetime.now().isoformat(),
+                    "tool_name": tool_name  # Include tool name in metadata
+                }
+            )
+            
+            if success:
+                st.session_state[saved_key].add(report_hash)
+                logger.info(f"✅ Auto-saved: {report_name} from {tool_name} ({module_name})")
+        except Exception as e:
+            logger.warning(f"Auto-save error for {report_name}: {e}")
+    # ======================================================================
+    
     # Generate filename with timestamp
     base_filename = report_name.replace(" ", "_").lower()
     filename = get_download_filename(base_filename)
@@ -379,37 +678,44 @@ def download_module_report(df: pd.DataFrame, module_name: str, report_name: str,
     # Convert to Excel
     excel_data = to_excel(df, apply_doc_formatting, report_name[:31])
     
-    # Create download button
+    # Create download button with stable key
+    btn_key = key or f"dl_{module_name}_{report_name.replace(' ', '_')}_{hash(report_name) % 10000}"
+    
+    # Initialize download tracking in session state
+    if "_download_clicks" not in st.session_state:
+        st.session_state._download_clicks = {}
+    
+    # Check if this button was clicked in a previous run (and not yet logged)
+    click_key = f"clicked_{btn_key}"
+    if click_key in st.session_state._download_clicks:
+        # This was clicked before - log it now (on reload)
+        click_info = st.session_state._download_clicks.pop(click_key)
+        log_download_event(
+            click_info["module"], 
+            click_info["report"], 
+            click_info["filename"], 
+            click_info["tool"]
+        )
+    
     downloaded = st.download_button(
         label=button_label,
         data=excel_data,
         file_name=filename,
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key=key or f"dl_{module_name}_{report_name}_{datetime.now().timestamp()}"
+        key=btn_key
     )
     
-    # Save to module collection and log download when clicked
+    # When clicked, store info for next reload to log
     if downloaded:
-        user = st.session_state.get("user", "anonymous")
-        
-        if save_and_track_report:
-            try:
-                save_and_track_report(
-                    module_name=module_name,
-                    report_name=report_name,
-                    df_data=df,
-                    user_email=user,
-                    filename=filename,
-                    is_download=True,
-                    metadata={
-                        "row_count": len(df),
-                        "column_count": len(df.columns),
-                        "file_size_bytes": len(excel_data)
-                    }
-                )
-                st.toast(f"✅ {report_name} saved to {module_name}", icon="📥")
-            except Exception as e:
-                logger.warning(f"Module report save error: {e}")
+        # Store for next run
+        st.session_state._download_clicks[click_key] = {
+            "module": module_name,
+            "report": report_name,
+            "filename": filename,
+            "tool": tool_name
+        }
+        # Also try immediate log
+        log_download_event(module_name, report_name, filename, tool_name)
     
     return downloaded
 

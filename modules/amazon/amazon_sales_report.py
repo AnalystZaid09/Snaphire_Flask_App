@@ -10,7 +10,8 @@ from common.ui_utils import (
     get_download_filename, 
     render_header,
     download_module_report,
-    download_multi_sheet_excel
+    download_multi_sheet_excel,
+    auto_save_generated_reports
 )
 from datetime import datetime
 
@@ -366,6 +367,9 @@ if st.button("🚀 Generate Analysis"):
         "BM Summary": bm_summary_final,
         "Raw Data": Working
     }
+    
+    # AUTO-SAVE all reports to MongoDB immediately
+    auto_save_generated_reports(all_reports, MODULE_NAME)
     
     download_multi_sheet_excel(
         reports=all_reports,

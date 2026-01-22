@@ -162,14 +162,15 @@ def get_downloads_collection():
     """Get report_downloads collection safely."""
     return get_collection("report_downloads")
 
-def get_saved_reports_collection():
-    """Get saved_reports collection safely."""
-    return get_collection("saved_reports")
+def get_download_history_collection():
+    """Get download_history collection safely."""
+    return get_collection("download_history")
 
 # Legacy collection references (for backward compatibility)
 # Note: These are evaluated at module load time
 downloads_col = get_collection("report_downloads")
 saved_reports_col = get_collection("saved_reports")
+history_col = get_collection("download_history")
 
 # Create indexes for performance
 def ensure_indexes():
