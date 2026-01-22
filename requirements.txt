@@ -20,6 +20,7 @@ bcrypt>=4.1.0
 
 # PDF & Reconciliation Utilities
 pdfplumber>=0.10.0
+pypdf
 PyPDF2>=3.0.0
 azure-ai-documentintelligence>=1.0.0b1
 fuzzywuzzy>=0.18.0
