@@ -97,14 +97,15 @@ def extract_pdf(file):
 
 # --- File Upload Section in Sidebar ---
 st.sidebar.header("📁 Upload Files")
-up_pdf = st.sidebar.file_uploader("Upload Invoice PDF", type="pdf")
-up_xlsx = st.sidebar.file_uploader("Upload Excel SKU File", type="xlsx")
+up_pdf = st.sidebar.file_uploader("Upload Invoice PDF", type="pdf", key="pdf")
+up_xlsx = st.sidebar.file_uploader("Upload Excel SKU File", type="xlsx", key="xlsx")
 
 st.sidebar.markdown("---")
+st.sidebar.info("👆 Upload files, then click **Process Files** below")
 
-# --- Process Button ---
+# --- Process Button in Main Content ---
 if up_pdf and up_xlsx:
-    if st.sidebar.button("🚀 Process Files", use_container_width=True):
+    if st.button("🚀 Process Files", type="primary", use_container_width=True):
         with st.spinner("🔄 Reconciling Data... Please wait."):
             try:
                 # Load and Extract

@@ -190,20 +190,21 @@ render_header("Amazon Support NCEMI Analysis Tool", "Upload your payment data an
 # Upload Section in Sidebar
 # ==============================
 st.sidebar.header("📁 Required Files")
-payment_file = st.sidebar.file_uploader("Payment Transaction CSV", type="csv")
-pm_file = st.sidebar.file_uploader("Product Master (PM) Excel", type=["xlsx", "xls"])
+payment_file = st.sidebar.file_uploader("Payment Transaction CSV", type="csv", key="payment")
+pm_file = st.sidebar.file_uploader("Product Master (PM) Excel", type=["xlsx", "xls"], key="pm")
 
 st.sidebar.markdown("---")
 st.sidebar.header("📦 B2B / B2C Files")
-b2b_files = st.sidebar.file_uploader("B2B Files", type=["csv", "zip"], accept_multiple_files=True)
-b2c_files = st.sidebar.file_uploader("B2C Files", type=["csv", "zip"], accept_multiple_files=True)
+b2b_files = st.sidebar.file_uploader("B2B Files", type=["csv", "zip"], accept_multiple_files=True, key="b2b")
+b2c_files = st.sidebar.file_uploader("B2C Files", type=["csv", "zip"], accept_multiple_files=True, key="b2c")
 
 st.sidebar.markdown("---")
+st.sidebar.info("👆 Upload files, then click **Process Data** below")
 
 # ==============================
-# Process Button
+# Process Button in Main Content
 # ==============================
-if st.sidebar.button("🚀 Process Data", use_container_width=True):
+if st.button("🚀 Process Data", type="primary", use_container_width=True):
     payment_df = load_payment_csv(payment_file)
     payment_order = process_payment_data(payment_df)
 

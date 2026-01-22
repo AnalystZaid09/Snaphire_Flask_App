@@ -24,11 +24,10 @@ apply_professional_style()
 # ---------- SIDEBAR ----------
 with st.sidebar:
     st.header("📁 Upload Files")
-    flipkart_file = st.file_uploader("Upload Flipkart PM Excel", type=["xlsx", "xls"])
-    top_products_file = st.file_uploader("Upload Top Products (CSV / Excel)", type=["csv", "xlsx", "xls"])
-    
+    flipkart_file = st.file_uploader("Upload Flipkart PM Excel", type=["xlsx", "xls"], key="flipkart_pm")
+    top_products_file = st.file_uploader("Upload Top Products (CSV / Excel)", type=["csv", "xlsx", "xls"], key="top_products")
     st.markdown("---")
-    generate = st.button("🚀 Generate Analysis", use_container_width=True)
+    st.info("👆 Upload files, then click **Generate Analysis** below")
 
 # ---------- TITLE ----------
 render_header("Flipkart Sales Analysis")
@@ -37,10 +36,13 @@ render_header("Flipkart Sales Analysis")
 if 'flip_results' not in st.session_state:
     st.session_state.flip_results = None
 
+# ---------- BUTTON IN MAIN CONTENT ----------
+generate = st.button("🚀 Generate Analysis", type="primary", use_container_width=True)
+
 # ---------- MAIN ----------
 if generate:
     if not flipkart_file or not top_products_file:
-        st.error("❌ Please upload both files")
+        st.error("❌ Please upload both files in the sidebar")
     else:
         try:
             # ---------- LOAD ----------

@@ -30,18 +30,19 @@ render_header("Order Analysis Dashboard")
 # Upload files in Sidebar
 # --------------------------------------------------
 st.sidebar.header("📁 Upload Files")
-orders_file = st.sidebar.file_uploader("Upload Orders File", type=["xlsx"])
-pm_file = st.sidebar.file_uploader("Upload Purchase Master File", type=["xlsx"])
+orders_file = st.sidebar.file_uploader("Upload Orders File", type=["xlsx"], key="orders")
+pm_file = st.sidebar.file_uploader("Upload Purchase Master File", type=["xlsx"], key="pm")
 
 st.sidebar.markdown("---")
+st.sidebar.info("👆 Upload files, then click **Generate Analysis** below")
 
 # --------------------------------------------------
-# Generate button
+# Generate button in main content
 # --------------------------------------------------
-if st.sidebar.button("🚀 Generate Analysis", use_container_width=True):
+if st.button("🚀 Generate Analysis", type="primary", use_container_width=True):
 
     if orders_file is None or pm_file is None:
-        st.error("Please upload both files")
+        st.error("❌ Please upload both files in the sidebar")
         st.stop()
 
     # --------------------------------------------------
