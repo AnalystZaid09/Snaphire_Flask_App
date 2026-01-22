@@ -108,35 +108,34 @@ def compute_financials(df):
 st.markdown("---")
 st.header("Upload Files & Options")
 
-left_col, right_col = st.columns(2)
+# ==============================
+# Sidebar: Upload Files and Settings
+# ==============================
+st.sidebar.header("📁 Upload Files")
 
-with left_col:
-    skip_rows = st.number_input(
-        "Rows to skip in CSV",
-        min_value=0,
-        max_value=200,
-        value=11,
-        help="Number of header rows to skip in the transaction CSV"
-    )
-    transaction_file = st.file_uploader("Upload Transaction File (CSV / Excel)", type=['csv', 'xlsx', 'xls'])
-    pm_file = st.file_uploader("Upload Purchase Master (CSV / Excel)", type=['csv', 'xlsx', 'xls'])
+skip_rows = st.sidebar.number_input(
+    "Rows to skip in CSV",
+    min_value=0,
+    max_value=200,
+    value=11,
+    help="Number of header rows to skip in the transaction CSV"
+)
+transaction_file = st.sidebar.file_uploader("Upload Transaction File (CSV / Excel)", type=['csv', 'xlsx', 'xls'])
+pm_file = st.sidebar.file_uploader("Upload Purchase Master (CSV / Excel)", type=['csv', 'xlsx', 'xls'])
+dyson_support_file = st.sidebar.file_uploader("Optional: Dyson Support file (CSV / XLSX)", type=['csv','xlsx','xls'])
 
-with right_col:
-    dyson_support_file = st.file_uploader("Optional: Dyson Support file (CSV / XLSX)", type=['csv','xlsx','xls'])
+st.sidebar.markdown("---")
+st.sidebar.header("⚙️ Dyson Settings")
+dyson_detect = st.sidebar.selectbox("Detect Dyson rows by:", [
+    'Product Name contains "dyson" (default)',
+    'Purchase Member Name contains "dyson"',
+    'Brand column equals "Dyson" (PM-based)'
+])
+dyson_agg = st.sidebar.selectbox("Aggregation for Dyson support:", ['last', 'max', 'mean'])
 
-    st.markdown("---")
-    st.subheader("Dyson override settings")
-    dyson_detect = st.selectbox("Detect Dyson rows by:", [
-        'Product Name contains "dyson" (default)',
-        'Purchase Member Name contains "dyson"',
-        'Brand column equals "Dyson" (PM-based)'
-    ])
-    dyson_agg = st.selectbox("Aggregation for Dyson support file (if multiple rows per SKU):", ['last', 'max', 'mean'])
-
-    st.markdown("---")
-    st.subheader("Export options")
-    enable_excel_export = st.checkbox("Enable Excel export (styled)", value=True)
-    # PDF export removed as requested
+st.sidebar.markdown("---")
+st.sidebar.header("📊 Export Options")
+enable_excel_export = st.sidebar.checkbox("Enable Excel export (styled)", value=True)
 
 
 # ----------------- Main processing -----------------

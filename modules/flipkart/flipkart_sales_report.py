@@ -23,30 +23,19 @@ apply_professional_style()
 
 # ---------- SIDEBAR ----------
 with st.sidebar:
-    st.title("⚙️ Controls")
-    st.markdown("""
-        **Steps:**
-        1. Flipkart PM Excel upload karein  
-        2. Top Products file upload karein  
-        3. Generate Analysis button click karein  
-    """)
+    st.header("📁 Upload Files")
+    flipkart_file = st.file_uploader("Upload Flipkart PM Excel", type=["xlsx", "xls"])
+    top_products_file = st.file_uploader("Upload Top Products (CSV / Excel)", type=["csv", "xlsx", "xls"])
+    
+    st.markdown("---")
+    generate = st.button("🚀 Generate Analysis", use_container_width=True)
 
 # ---------- TITLE ----------
 render_header("Flipkart Sales Analysis")
 
-# ---------- FILE UPLOAD ----------
-c1, c2 = st.columns(2)
-with c1:
-    flipkart_file = st.file_uploader("Upload Flipkart PM Excel", type=["xlsx", "xls"])
-with c2:
-    top_products_file = st.file_uploader("Upload Top Products (CSV / Excel)", type=["csv", "xlsx", "xls"])
-
 # ---------- SESSION STATE ----------
 if 'flip_results' not in st.session_state:
     st.session_state.flip_results = None
-
-# ---------- BUTTON ----------
-generate = st.button("🚀 Generate Analysis", use_container_width=True)
 
 # ---------- MAIN ----------
 if generate:

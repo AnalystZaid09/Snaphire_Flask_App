@@ -187,30 +187,23 @@ def process_service_fees(payment_df):
 render_header("Amazon Support NCEMI Analysis Tool", "Upload your payment data and match SKUs with B2B / B2C reports")
 
 # ==============================
-# Upload Section
+# Upload Section in Sidebar
 # ==============================
-col1, col2 = st.columns(2)
+st.sidebar.header("📁 Required Files")
+payment_file = st.sidebar.file_uploader("Payment Transaction CSV", type="csv")
+pm_file = st.sidebar.file_uploader("Product Master (PM) Excel", type=["xlsx", "xls"])
 
-with col1:
-    st.markdown("<div class='upload-card'>", unsafe_allow_html=True)
-    st.markdown("### Required Files")
-    payment_file = st.file_uploader("Payment Transaction CSV", type="csv")
-    pm_file = st.file_uploader("Product Master (PM) Excel", type=["xlsx", "xls"])
-    st.markdown("</div>", unsafe_allow_html=True)
+st.sidebar.markdown("---")
+st.sidebar.header("📦 B2B / B2C Files")
+b2b_files = st.sidebar.file_uploader("B2B Files", type=["csv", "zip"], accept_multiple_files=True)
+b2c_files = st.sidebar.file_uploader("B2C Files", type=["csv", "zip"], accept_multiple_files=True)
 
-with col2:
-    st.markdown("<div class='upload-card'>", unsafe_allow_html=True)
-    st.markdown("### B2B / B2C Files")
-    b2b_files = st.file_uploader("B2B Files", type=["csv", "zip"], accept_multiple_files=True)
-    b2c_files = st.file_uploader("B2C Files", type=["csv", "zip"], accept_multiple_files=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-st.markdown("---")
+st.sidebar.markdown("---")
 
 # ==============================
 # Process Button
 # ==============================
-if st.button("🚀 Process Data", use_container_width=True):
+if st.sidebar.button("🚀 Process Data", use_container_width=True):
     payment_df = load_payment_csv(payment_file)
     payment_order = process_payment_data(payment_df)
 

@@ -64,34 +64,54 @@ def apply_professional_style():
     
     st.markdown("""
         <style>
+        /* ======== FORCE LIGHT MODE ======== */
+        :root {
+            color-scheme: light !important;
+        }
+        
         /* ======== SIDEBAR ALWAYS VISIBLE ======== */
         /* Hide the collapse arrow button completely */
         [data-testid="collapsedControl"] {
             display: none !important;
             visibility: hidden !important;
+            width: 0 !important;
+            height: 0 !important;
         }
         button[kind="header"] {
             display: none !important;
         }
+        .css-1rs6os {
+            display: none !important;
+        }
+        .css-fblp2m {
+            display: none !important;
+        }
         
-        /* Force sidebar to always be visible */
+        /* Force sidebar to always be visible and expanded */
         [data-testid="stSidebar"] {
             min-width: 320px !important;
             max-width: 350px !important;
+            width: 320px !important;
             transform: none !important;
+            transition: none !important;
             position: relative !important;
             z-index: 1 !important;
+            left: 0 !important;
+            margin-left: 0 !important;
         }
         [data-testid="stSidebar"][aria-expanded="false"] {
             display: block !important;
             min-width: 320px !important;
+            width: 320px !important;
             margin-left: 0 !important;
             transform: translateX(0) !important;
+            left: 0 !important;
         }
         section[data-testid="stSidebar"] {
             width: 320px !important;
             min-width: 320px !important;
             transform: none !important;
+            left: 0 !important;
         }
         section[data-testid="stSidebar"] > div:first-child {
             width: 320px !important;
@@ -104,17 +124,32 @@ def apply_professional_style():
         }
         
         /* ======== WHITE BACKGROUND FOR MAIN CONTENT ======== */
-        .stApp {
-            background-color: #ffffff !important;
-        }
-        .main .block-container {
-            background-color: #ffffff !important;
-        }
-        [data-testid="stAppViewContainer"] {
+        .stApp, [data-testid="stAppViewContainer"], .main, .main .block-container {
             background-color: #ffffff !important;
         }
         .stApp > header {
             background-color: #ffffff !important;
+        }
+        
+        /* ======== TEXT COLORS FOR READABILITY ======== */
+        .stApp, .stApp p, .stApp span, .stApp label, .stApp div {
+            color: #1f2937 !important;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            color: #111827 !important;
+        }
+        .stMarkdown, .stText {
+            color: #374151 !important;
+        }
+        
+        /* Tab styling */
+        .stTabs [data-baseweb="tab-list"] {
+            background-color: #f3f4f6 !important;
+            border-radius: 8px;
+            padding: 4px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            color: #374151 !important;
         }
         
         /* ======== REPORT HEADER STYLING ======== */
@@ -124,9 +159,24 @@ def apply_professional_style():
             margin-bottom: 1.5rem;
         }
         .report-title {
-            color: #1e40af;
-            font-size: 1.5rem;
-            font-weight: 600;
+            color: #1e40af !important;
+            font-size: 1.8rem !important;
+            font-weight: 700 !important;
+        }
+        
+        /* Metrics styling */
+        [data-testid="stMetricValue"] {
+            color: #1e40af !important;
+        }
+        
+        /* DataFrames */
+        .stDataFrame {
+            background-color: #ffffff !important;
+        }
+        
+        /* File uploader */
+        [data-testid="stFileUploader"] {
+            background-color: #ffffff !important;
         }
         </style>
     """, unsafe_allow_html=True)

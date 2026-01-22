@@ -97,22 +97,32 @@ def init_mongo_connection(max_retries=3):
     logger.info(f"🔌 Attempting to connect to MongoDB...")
     logger.info(f"🔗 URI (masked): {safe_uri_display}")
     
+    # Detect if this is a localhost/local connection
+    is_local = any(x in MONGO_URI.lower() for x in ["localhost", "127.0.0.1", "0.0.0.0"])
+    
     for attempt in range(max_retries):
         try:
             # Check if we should allow invalid certificates (for machines with SSL issues)
             allow_invalid_tls = os.getenv("MONGO_TLS_ALLOW_INVALID", "false").lower() == "true"
             
-            client = MongoClient(
-                MONGO_URI,
-                serverSelectionTimeoutMS=SERVER_SELECTION_TIMEOUT_MS,
-                connectTimeoutMS=CONNECTION_TIMEOUT_MS,
-                maxPoolSize=MAX_POOL_SIZE,
-                minPoolSize=MIN_POOL_SIZE,
-                retryWrites=True,
-                w='majority',
-                tlsCAFile=certifi.where(),
-                tlsAllowInvalidCertificates=allow_invalid_tls
-            )
+            # Build connection options
+            connection_options = {
+                "serverSelectionTimeoutMS": SERVER_SELECTION_TIMEOUT_MS,
+                "connectTimeoutMS": CONNECTION_TIMEOUT_MS,
+                "maxPoolSize": MAX_POOL_SIZE,
+                "minPoolSize": MIN_POOL_SIZE
+            }
+            
+            # Only add SSL options for non-local connections (e.g., MongoDB Atlas)
+            if not is_local and "mongodb+srv" in MONGO_URI:
+                connection_options["tlsCAFile"] = certifi.where()
+                connection_options["retryWrites"] = True
+                connection_options["w"] = "majority"
+                if allow_invalid_tls:
+                    connection_options["tlsAllowInvalidCertificates"] = True
+            
+            client = MongoClient(MONGO_URI, **connection_options)
+            
             # Verify connection
             client.admin.command('ping')
             db = client[MONGO_DB_NAME]

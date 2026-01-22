@@ -95,13 +95,16 @@ def extract_pdf(file):
             })
     return pd.DataFrame(items), summary
 
-# --- File Upload Section ---
-up_pdf = st.file_uploader("Upload Invoice PDF", type="pdf")
-up_xlsx = st.file_uploader("Upload Excel SKU File", type="xlsx")
+# --- File Upload Section in Sidebar ---
+st.sidebar.header("📁 Upload Files")
+up_pdf = st.sidebar.file_uploader("Upload Invoice PDF", type="pdf")
+up_xlsx = st.sidebar.file_uploader("Upload Excel SKU File", type="xlsx")
+
+st.sidebar.markdown("---")
 
 # --- Process Button ---
 if up_pdf and up_xlsx:
-    if st.button("🚀 Process Files", use_container_width=True):
+    if st.sidebar.button("🚀 Process Files", use_container_width=True):
         with st.spinner("🔄 Reconciling Data... Please wait."):
             try:
                 # Load and Extract
