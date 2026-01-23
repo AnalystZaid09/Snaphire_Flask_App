@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 
-<body>
+<body class="{% block body_class %}{% endblock %}">
     <!-- Header -->
     <header class="header">
         <div class="header-title">IBI Ops Super App</div>
@@ -23,31 +23,76 @@
 
     <div class="layout">
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
+            <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+                <span class="toggle-icon">«</span>
+            </button>
             <div class="sidebar-section">
                 <a href="{{ url_for('home') }}" class="sidebar-item home-btn">
-                    🏠 Dashboard
+                    <span class="sidebar-icon">🏠</span>
+                    <span class="sidebar-text">Dashboard</span>
+                    <span class="tooltip-text">Dashboard</span>
                 </a>
                 <div class="sidebar-title">Modules</div>
                 {% for module in modules %}
                 <a href="{{ url_for('module_page', module_name=module.name) }}"
                     class="sidebar-item {% if module.active %}active{% endif %}">
-                    {% if 'amazon' in module.name.lower() %}📦{% endif %}
-                    {% if 'flipkart' in module.name.lower() %}🛒{% endif %}
-                    {% if 'reconciliation' in module.name.lower() %}🔄{% endif %}
-                    {% if 'leakage' in module.name.lower() %}🔍{% endif %}
-                    {% if 'stock' in module.name.lower() %}📈{% endif %}
-                    {{ module.display_name }}
+                    <span class="sidebar-icon">
+                        {% if 'amazon' in module.name.lower() %}📦
+                        {% elif 'flipkart' in module.name.lower() %}🛒
+                        {% elif 'leakage' in module.name.lower() %}🔍
+                        {% elif 'reconciliation' in module.name.lower() %}🔄
+                        {% elif 'stock' in module.name.lower() %}📈
+                        {% else %}📁{% endif %}
+                    </span>
+                    <span class="sidebar-text">{{ module.display_name }}</span>
+                    <span class="tooltip-text">{{ module.display_name }}</span>
                 </a>
                 {% endfor %}
             </div>
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content">
+        <main class="main-content" id="mainContent">
             {% block content %}{% endblock %}
         </main>
     </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            const toggleIcon = document.querySelector('.toggle-icon');
+
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('expanded');
+
+            if (sidebar.classList.contains('collapsed')) {
+                toggleIcon.textContent = '»';
+                localStorage.setItem('sidebarCollapsed', 'true');
+            } else {
+                toggleIcon.textContent = '«';
+                localStorage.setItem('sidebarCollapsed', 'false');
+            }
+        }
+
+        // Auto-collapse sidebar on tool pages and restore preference
+        document.addEventListener('DOMContentLoaded', function () {
+            const isToolPage = document.body.classList.contains('tool-page');
+            const savedState = localStorage.getItem('sidebarCollapsed');
+
+            // Auto-collapse on tool pages, or restore saved preference
+            if (isToolPage || savedState === 'true') {
+                const sidebar = document.getElementById('sidebar');
+                const mainContent = document.getElementById('mainContent');
+                const toggleIcon = document.querySelector('.toggle-icon');
+
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('expanded');
+                toggleIcon.textContent = '»';
+            }
+        });
+    </script>
 </body>
 
 </html>

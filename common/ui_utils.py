@@ -18,50 +18,34 @@ logger = logging.getLogger(__name__)
 
 # Import MongoDB utilities from common.mongo
 try:
-    from common.mongo import (
-        log_report_download, 
-        log_multi_report_download, 
-        downloads_col, 
-        MONGO_CONNECTED,
-        save_module_report,
-        save_and_track_report,
-        save_reconciliation_report
-    )
-    MONGO_AVAILABLE = MONGO_CONNECTED
+    import common.mongo as mongo
+    
+    # We use a property-like check to ensure we get the CURRENT connection status
+    def is_mongo_available():
+        return getattr(mongo, "MONGO_CONNECTED", False)
+        
+    log_report_download = getattr(mongo, "log_report_download", None)
+    log_multi_report_download = getattr(mongo, "log_multi_report_download", None)
+    save_module_report = getattr(mongo, "save_module_report", None)
+    save_and_track_report = getattr(mongo, "save_and_track_report", None)
+    save_reconciliation_report = getattr(mongo, "save_reconciliation_report", None)
+    save_report_with_tracking = getattr(mongo, "save_report_with_tracking", None)
+    register_report_info = getattr(mongo, "register_report_info", None)
+    
 except ImportError:
-    MONGO_AVAILABLE = False
+    def is_mongo_available():
+        return False
     log_report_download = None
     log_multi_report_download = None
-    downloads_col = None
     save_module_report = None
     save_and_track_report = None
+    save_reconciliation_report = None
+    save_report_with_tracking = None
+    register_report_info = None
 
 
 def apply_professional_style():
-    """Applies professional CSS styling and adds Home button."""
-    # Add Home button to sidebar
-    st.sidebar.markdown("""
-        <a href="http://localhost:5000" target="_top" style="
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(30, 64, 175, 0.3);
-            transition: all 0.2s ease;
-        " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-            🏠 Home
-        </a>
-    """, unsafe_allow_html=True)
-    
-    st.sidebar.markdown("---")
-    
+    """Restores the original Fixed-Sidebar logic (Version 1)."""
     st.markdown("""
         <style>
         /* ======== FORCE LIGHT MODE ======== */
@@ -69,26 +53,29 @@ def apply_professional_style():
             color-scheme: light !important;
         }
         
-        /* ======== SIDEBAR ALWAYS VISIBLE ======== */
-        /* Hide the collapse arrow button completely */
-        [data-testid="collapsedControl"] {
+        /* ======== FORCE SIDEBAR PERMANENTLY VISIBLE ======== */
+        /* Ultra-aggressive hiding of collapse/expand arrows and all header buttons */
+        [data-testid="collapsedControl"], 
+        header button, 
+        button[aria-label="Collapse sidebar"], 
+        button[aria-label="Expand sidebar"],
+        [data-testid="stHeader"] button,
+        .st-emotion-cache-6qob1r { 
             display: none !important;
             visibility: hidden !important;
             width: 0 !important;
             height: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
         }
-        button[kind="header"] {
-            display: none !important;
-        }
-        .css-1rs6os {
-            display: none !important;
-        }
-        .css-fblp2m {
+        
+        /* Hide any SVG icons that look like arrows in the sidebar area */
+        [data-testid="stSidebar"] svg {
             display: none !important;
         }
         
-        /* Force sidebar to always be visible and expanded */
-        [data-testid="stSidebar"] {
+        /* Force sidebar to be a fixed side-panel that cannot move */
+        section[data-testid="stSidebar"] {
             min-width: 320px !important;
             max-width: 350px !important;
             width: 320px !important;
@@ -98,85 +85,70 @@ def apply_professional_style():
             z-index: 1 !important;
             left: 0 !important;
             margin-left: 0 !important;
-        }
-        [data-testid="stSidebar"][aria-expanded="false"] {
-            display: block !important;
-            min-width: 320px !important;
-            width: 320px !important;
-            margin-left: 0 !important;
-            transform: translateX(0) !important;
-            left: 0 !important;
-        }
-        section[data-testid="stSidebar"] {
-            width: 320px !important;
-            min-width: 320px !important;
-            transform: none !important;
-            left: 0 !important;
-        }
-        section[data-testid="stSidebar"] > div:first-child {
-            width: 320px !important;
-            min-width: 320px !important;
-        }
-        
-        /* Sidebar background - light gray */
-        [data-testid="stSidebar"] > div:first-child {
             background-color: #f8fafc !important;
+            border-right: 1px solid #e2e8f0 !important;
         }
         
-        /* ======== WHITE BACKGROUND FOR MAIN CONTENT ======== */
-        .stApp, [data-testid="stAppViewContainer"], .main, .main .block-container {
+        /* Handle the main content area to follow the fixed sidebar */
+        [data-testid="stMainViewContainer"] {
+            margin-left: 0 !important;
+        }
+
+        /* Hide the top header bar (Deploy, Help, etc.) */
+        header[data-testid="stHeader"] {
+            display: none !important;
+            height: 0 !important;
+        }
+        
+        /* ======== PREMIUM UI ELEMENTS ======== */
+        .stApp {
             background-color: #ffffff !important;
+            font-family: 'Inter', 'Segoe UI', sans-serif !important;
         }
-        .stApp > header {
-            background-color: #ffffff !important;
-        }
-        
-        /* ======== TEXT COLORS FOR READABILITY ======== */
-        .stApp, .stApp p, .stApp span, .stApp label, .stApp div {
-            color: #1f2937 !important;
-        }
-        h1, h2, h3, h4, h5, h6 {
-            color: #111827 !important;
-        }
-        .stMarkdown, .stText {
-            color: #374151 !important;
-        }
-        
-        /* Tab styling */
-        .stTabs [data-baseweb="tab-list"] {
-            background-color: #f3f4f6 !important;
-            border-radius: 8px;
-            padding: 4px;
-        }
-        .stTabs [data-baseweb="tab"] {
-            color: #374151 !important;
-        }
-        
-        /* ======== REPORT HEADER STYLING ======== */
+
         .report-header {
             text-align: center;
             padding: 1rem 0;
-            margin-bottom: 1.5rem;
+            margin-bottom: 2rem;
+            background: #fdfdfd;
+            border-bottom: 1px dashed #3b82f633;
+            border-radius: 8px;
         }
+        
         .report-title {
-            color: #1e40af !important;
-            font-size: 1.8rem !important;
+            color: #1e3a8a !important;
+            font-size: 1.7rem !important;
             font-weight: 700 !important;
         }
-        
-        /* Metrics styling */
-        [data-testid="stMetricValue"] {
-            color: #1e40af !important;
+
+        .stButton button {
+            border-radius: 8px !important;
+            background: #1e40af !important;
+            color: white !important;
+            font-weight: 600 !important;
+            border: none !important;
+        }
+
+        .stButton button:hover {
+            background: #1d4ed8 !important;
+            transform: translateY(-1px);
+        }
+
+        [data-testid="stSidebar"] p, [data-testid="stSidebar"] label {
+            color: #1f2937 !important;
+            font-weight: 500 !important;
         }
         
-        /* DataFrames */
-        .stDataFrame {
-            background-color: #ffffff !important;
-        }
-        
-        /* File uploader */
         [data-testid="stFileUploader"] {
-            background-color: #ffffff !important;
+            border: 1px dashed #cbd5e1 !important;
+            background: #fdfdfd !important;
+            padding: 10px !important;
+            border-radius: 8px !important;
+        }
+
+        .stTabs [data-baseweb="tab-list"] {
+            background-color: #f1f5f9 !important;
+            border-radius: 8px;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -356,7 +328,7 @@ def auto_save_generated_reports(reports: Dict[str, pd.DataFrame], module_name: s
         show_toast: Whether to show success toast
         tool_name: Tool name (auto-detected if not provided)
     """
-    if not MONGO_AVAILABLE or not log_report_download:
+    if not is_mongo_available() or not save_report_with_tracking:
         logger.warning("MongoDB not available for auto-save")
         return 0
     
@@ -395,18 +367,17 @@ def auto_save_generated_reports(reports: Dict[str, pd.DataFrame], module_name: s
             filename = f"auto_{get_download_filename(report_name.replace(' ', '_'))}"
             col_count = len(df.columns) if hasattr(df, 'columns') else 0
             
-            success = log_report_download(
-                user_email=user,
-                module=module_name,
+            success = save_report_with_tracking(
+                module_name=module_name,
+                tool_name=tool_name,
                 report_name=report_name,
-                filename=filename,
                 df_data=df,
-                row_count=row_count,
-                col_count=col_count,
+                user_email=user,
+                filename=filename,
                 metadata={
-                    "auto_saved": True, 
+                    "auto_saved": True,
                     "generated_at": datetime.now().isoformat(),
-                    "tool_name": tool_name
+                    **(metadata or {})
                 }
             )
             
@@ -771,29 +742,47 @@ def download_module_report(df: pd.DataFrame, module_name: str, report_name: str,
     report_hash = f"{report_name}_{len(df) if hasattr(df, '__len__') else 0}"
     
     # Auto-save if not already saved this session
-    if report_hash not in st.session_state[saved_key] and MONGO_AVAILABLE and log_report_download:
+    if report_hash not in st.session_state[saved_key] and MONGO_AVAILABLE:
         try:
             user = st.session_state.get("user", "anonymous")
             auto_filename = f"auto_{get_download_filename(report_name.replace(' ', '_'))}"
             
-            success = log_report_download(
-                user_email=user,
-                module=module_name,
-                report_name=report_name,
-                filename=auto_filename,
-                df_data=df,
-                row_count=len(df) if hasattr(df, '__len__') else 0,
-                col_count=len(df.columns) if hasattr(df, 'columns') else 0,
-                metadata={
-                    "auto_saved": True, 
-                    "generated_at": datetime.now().isoformat(),
-                    "tool_name": tool_name  # Include tool name in metadata
-                }
-            )
-            
-            if success:
-                st.session_state[saved_key].add(report_hash)
-                logger.info(f"✅ Auto-saved: {report_name} from {tool_name} ({module_name})")
+            # Use new save_report_with_tracking for centralized registry tracking
+            if save_report_with_tracking:
+                report_id = save_report_with_tracking(
+                    module_name=module_name,
+                    tool_name=tool_name,
+                    report_name=report_name,
+                    df_data=df,
+                    user_email=user,
+                    filename=auto_filename,
+                    metadata={
+                        "auto_saved": True, 
+                        "generated_at": datetime.now().isoformat()
+                    }
+                )
+                if report_id:
+                    st.session_state[saved_key].add(report_hash)
+                    logger.info(f"✅ Auto-saved: {report_name} from {tool_name} ({module_name}) [ID: {report_id}]")
+            elif log_report_download:
+                # Fallback to old method if new function not available
+                success = log_report_download(
+                    user_email=user,
+                    module=module_name,
+                    report_name=report_name,
+                    filename=auto_filename,
+                    df_data=df,
+                    row_count=len(df) if hasattr(df, '__len__') else 0,
+                    col_count=len(df.columns) if hasattr(df, 'columns') else 0,
+                    metadata={
+                        "auto_saved": True, 
+                        "generated_at": datetime.now().isoformat(),
+                        "tool_name": tool_name
+                    }
+                )
+                if success:
+                    st.session_state[saved_key].add(report_hash)
+                    logger.info(f"✅ Auto-saved (legacy): {report_name} from {tool_name} ({module_name})")
         except Exception as e:
             logger.warning(f"Auto-save error for {report_name}: {e}")
     # ======================================================================

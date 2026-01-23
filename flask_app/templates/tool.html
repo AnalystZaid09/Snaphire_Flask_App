@@ -2,8 +2,10 @@
 
 {% block title %}{{ tool_display }} — {{ module_display }}{% endblock %}
 
+{% block body_class %}tool-page{% endblock %}
+
 {% block content %}
-<div class="page-header">
+<div class="page-header tool-header">
     <div class="breadcrumb">
         <a href="{{ url_for('module_page', module_name=module_name) }}">← Back to {{ module_display }}</a>
     </div>

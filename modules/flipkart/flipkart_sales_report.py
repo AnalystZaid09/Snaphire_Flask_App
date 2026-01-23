@@ -11,11 +11,13 @@ from common.ui_utils import (
     apply_professional_style, 
     get_download_filename, 
     render_header,
-    download_module_report
+    download_module_report,
+    auto_save_generated_reports
 )
 
-# Module name for MongoDB collection
+# Module name and Tool name for MongoDB tracking
 MODULE_NAME = "flipkart"
+TOOL_NAME = "flipkart_sales_report"
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(page_title="Flipkart Sales Analysis", layout="wide")
@@ -127,6 +129,14 @@ if generate:
 
             st.session_state.flip_results = final_df
             st.success("✅ Analysis generated successfully!")
+            
+            # AUTO-SAVE generated reports to database
+            # Only save once when generated
+            if st.session_state.flip_results is not None:
+                reports_to_save = {
+                    "Flipkart Sales Data": final_df
+                }
+                auto_save_generated_reports(reports_to_save, MODULE_NAME, tool_name=TOOL_NAME)
 
         except Exception as e:
             st.error(f"❌ Error: {e}")

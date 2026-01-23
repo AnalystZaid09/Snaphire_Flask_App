@@ -12,10 +12,13 @@ from common.ui_utils import (
     render_header,
     download_module_report,
     auto_log_reports,
-    to_excel
+    to_excel,
+    auto_save_generated_reports
 )
 
+# Module and Tool name for MongoDB tracking
 MODULE_NAME = "amazon"
+TOOL_NAME = "amazon_po_working"
 
 # Page configuration
 st.set_page_config(
@@ -405,6 +408,12 @@ if process_button:
 
                 st.session_state.business_pivot = business_pivot
                 st.session_state.processed = True
+                
+                # AUTO-SAVE generated report to MongoDB
+                reports_to_save = {
+                    "PO Working Analysis": business_pivot
+                }
+                auto_save_generated_reports(reports_to_save, MODULE_NAME, tool_name=TOOL_NAME)
 
                 st.success("✅ Data processed successfully!")
                 st.rerun()

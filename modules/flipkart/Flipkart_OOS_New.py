@@ -7,10 +7,12 @@ from common.ui_utils import (
     apply_professional_style, 
     get_download_filename, 
     render_header,
-    download_module_report
+    download_module_report,
+    auto_save_generated_reports
 )
 
 MODULE_NAME = "flipkart"
+TOOL_NAME = "flipkart_oos"  # Tool identifier for MongoDB tracking
 
 # Page configuration
 st.set_page_config(
@@ -453,6 +455,17 @@ if business_file and purchase_master_file and inventory_file:
             no_of_days_inventory, doc_inventory_threshold
         )
         
+        # AUTO-SAVE generated reports to MongoDB
+        reports_to_save = {
+            "Business Pivot": Business_Pivot,
+            "OOS Report": OOS_Report,
+            "Overstock Report": Overstock_Report,
+            "Inventory Report Pivot": Inventory_Report_Pivot,
+            "OOS Inventory": OOS_Inventory,
+            "Overstock Inventory": Overstock_Inventory
+        }
+        auto_save_generated_reports(reports_to_save, MODULE_NAME, tool_name=TOOL_NAME)
+
         # Create tabs
         tab1, tab2 = st.tabs(["📊 Business Report", "📦 Inventory Report"])
         

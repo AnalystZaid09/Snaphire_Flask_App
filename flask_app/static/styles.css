@@ -109,18 +109,82 @@ body {
     min-height: calc(100vh - 60px);
 }
 
-/* Sidebar - Modern Design */
+/* Sidebar - Modern Design with Collapsible */
 .sidebar {
     width: 260px;
     background: #ffffff;
     border-right: 1px solid var(--gray-200);
     padding: 1.5rem 0;
+    padding-top: 2.5rem;
     position: fixed;
     top: 60px;
     left: 0;
     height: calc(100vh - 60px);
     overflow-y: auto;
+    overflow-x: visible;
     box-shadow: var(--shadow-md);
+    transition: width 0.3s ease, padding 0.3s ease;
+    z-index: 50;
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--gray-100);
+    color: var(--gray-600);
+    border: 1px solid var(--gray-300);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+    z-index: 100;
+}
+
+.sidebar-toggle:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.toggle-icon {
+    line-height: 1;
+}
+
+/* Collapsed Sidebar */
+.sidebar.collapsed {
+    width: 60px;
+    padding: 1.5rem 0;
+    padding-top: 2.5rem;
+}
+
+.sidebar.collapsed .sidebar-text {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-title {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-item {
+    justify-content: center;
+    padding: 0.75rem;
+}
+
+.sidebar.collapsed .sidebar-icon {
+    margin: 0;
+}
+
+.sidebar.collapsed .sidebar-toggle {
+    right: 16px;
 }
 
 .sidebar-section {
@@ -135,26 +199,90 @@ body {
     letter-spacing: 0.1em;
     margin: 1.5rem 0 0.75rem;
     padding-left: 0.75rem;
+    transition: opacity 0.3s ease;
 }
 
 .sidebar-item {
     display: flex;
     align-items: center;
-    padding: 0.75rem 1rem;
+    padding: 0.875rem 1.25rem;
     color: var(--gray-600);
     font-size: 0.9rem;
     font-weight: 500;
     text-decoration: none;
-    border-radius: 10px;
-    margin-bottom: 0.25rem;
+    border-radius: 12px;
+    margin-bottom: 0.5rem;
     transition: var(--transition);
     position: relative;
+    gap: 0.75rem;
+}
+
+.sidebar-icon {
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+}
+
+.sidebar-text {
+    transition: opacity 0.3s ease;
+    white-space: nowrap;
 }
 
 .sidebar-item:hover {
     background: linear-gradient(135deg, rgba(30, 64, 175, 0.05) 0%, rgba(59, 130, 246, 0.08) 100%);
     color: var(--primary);
     transform: translateX(4px);
+}
+
+.sidebar.collapsed .sidebar-item:hover {
+    transform: none;
+}
+
+/* Tooltip functionality */
+.tooltip-text {
+    display: none;
+}
+
+.sidebar.collapsed .sidebar-item .tooltip-text {
+    display: block;
+    position: absolute;
+    left: 45px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #111827;
+    color: #ffffff !important;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    z-index: 99999;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* Tooltip Arrow */
+.sidebar.collapsed .sidebar-item .tooltip-text::before {
+    content: "";
+    position: absolute;
+    left: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent #111827 transparent transparent;
+}
+
+.sidebar.collapsed .sidebar-item:hover .tooltip-text {
+    opacity: 1;
+    left: 65px;
+}
+
+.sidebar.collapsed,
+.sidebar.collapsed .sidebar-section {
+    overflow: visible !important;
 }
 
 .sidebar-item.active {
@@ -168,12 +296,17 @@ body {
     margin-bottom: 1rem !important;
 }
 
-/* Main Content */
+/* Main Content - Adjusts when sidebar collapses */
 .main-content {
     flex: 1;
     margin-left: 260px;
     padding: 2rem 2.5rem;
     background: transparent;
+    transition: margin-left 0.3s ease;
+}
+
+.main-content.expanded {
+    margin-left: 60px;
 }
 
 .page-header {
@@ -193,6 +326,21 @@ body {
     color: var(--gray-500);
     font-size: 1rem;
     font-weight: 400;
+}
+
+/* Compact header for tool pages */
+.tool-header {
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.tool-header .page-title {
+    font-size: 1.25rem;
+    margin-bottom: 0;
+}
+
+.tool-header .breadcrumb {
+    margin-bottom: 0.5rem;
 }
 
 /* Card Grid - Enhanced */
@@ -301,21 +449,36 @@ body {
     transform: translateX(4px);
 }
 
-/* Tool Container with Streamlit iframe */
+/* Tool Container with Streamlit iframe - FULL WIDTH/HEIGHT */
 .tool-container {
     background: #ffffff;
-    border: 1px solid var(--gray-200);
-    border-radius: 16px;
+    border: none;
+    border-radius: 0;
     overflow: hidden;
-    height: calc(100vh - 180px);
+    height: calc(100vh - 130px);
     min-height: 600px;
-    box-shadow: var(--shadow-lg);
+    width: 100%;
+    margin: 0 -2.5rem;
+    padding: 0;
+    width: calc(100% + 5rem);
+}
+
+/* When sidebar is collapsed, tool gets more width */
+.tool-page .main-content {
+    padding: 1rem 1.5rem;
+}
+
+.tool-page .tool-container {
+    height: calc(100vh - 100px);
+    margin: 0 -1.5rem;
+    width: calc(100% + 3rem);
 }
 
 .streamlit-iframe {
     width: 100%;
     height: 100%;
     border: none;
+    display: block;
 }
 
 /* Animations */
@@ -324,6 +487,7 @@ body {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -331,8 +495,15 @@ body {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
 }
 
 /* Breadcrumb */
@@ -378,11 +549,11 @@ body {
     .header {
         padding: 0.75rem 1rem;
     }
-    
+
     .header-title {
         font-size: 0.9rem;
     }
-    
+
     .sidebar {
         width: 100%;
         position: relative;
@@ -402,7 +573,7 @@ body {
     .card-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .page-title {
         font-size: 1.5rem;
     }
@@ -427,5 +598,7 @@ body {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }

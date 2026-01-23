@@ -6,7 +6,11 @@ import base64
 import gc
 from common.mongo import save_reconciliation_report
 from datetime import datetime
-from common.ui_utils import apply_professional_style, render_header
+from common.ui_utils import apply_professional_style, render_header, auto_save_generated_reports
+
+# Module name and Tool name for MongoDB tracking
+MODULE_NAME = "flipkart"
+TOOL_NAME = "flipkart_pl"
 
 # Page configuration is handled by the main app
 apply_professional_style()
@@ -546,21 +550,14 @@ if all([payment_file, uni_orders_file, fsn_file, pm_file]):
                 st.session_state.brand_pivot = brand_pivot
                 st.session_state.files_hash = current_hash
                 
-                # Save to MongoDB
-                try:
-                    save_reconciliation_report(
-                        collection_name="flipkart_pl",
-                        invoice_no=f"FLIPKART_PL_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                        summary_data={
-                            "total_sales": float(pivot_df["Sales Amount"].sum()) if "Sales Amount" in pivot_df.columns else 0,
-                            "total_profit": float(pivot_df["After 3% Profit"].sum()) if "After 3% Profit" in pivot_df.columns else 0,
-                            "total_rows": len(pivot_df)
-                        },
-                        line_items_data=pivot_df,
-                        metadata={"report_type": "flipkart_pl"}
-                    )
-                except Exception:
-                    pass
+                # Prepare all reports for auto-save
+                reports_to_save = {
+                    "Flipkart P&L Report": pivot_df,
+                    "Brand-wise Profit Summary": brand_pivot
+                }
+                
+                # AUTO-SAVE to MongoDB for persistence
+                auto_save_generated_reports(reports_to_save, MODULE_NAME, tool_name=TOOL_NAME)
                 
                 gc.collect()
                 

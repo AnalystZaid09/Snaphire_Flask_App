@@ -45,6 +45,7 @@ def save_reconciliation_report(
     invoice_no: str, 
     summary_data: Any, 
     line_items_data: Any, 
+    tool_name: str = None,
     metadata: Optional[Dict] = None
 ) -> bool:
     """
@@ -59,6 +60,7 @@ def save_reconciliation_report(
         invoice_no: The invoice number (used as a key identifier)
         summary_data: Summary data - can be dict, list, or DataFrame
         line_items_data: Line items data - can be dict, list, or DataFrame
+        tool_name: Name of the tool generating the report (optional)
         metadata: Optional additional metadata
     
     Returns:
@@ -78,7 +80,7 @@ def save_reconciliation_report(
         has_pandas = False
 
     try:
-        from common.mongo import get_db, log_report_download
+        from common.mongo import get_db, log_report_download, register_report_info
         db = get_db()
         if db is None:
             return False
@@ -86,15 +88,21 @@ def save_reconciliation_report(
         collection = db[collection_name]
 
         # Convert DataFrame to records if needed
+        row_count = 0
         if has_pandas and hasattr(summary_data, 'to_dict'):
+            row_count = len(summary_data)
             summary_data = summary_data.to_dict(orient='records')
         
         if has_pandas and hasattr(line_items_data, 'to_dict'):
             line_items_data = line_items_data.to_dict(orient='records')
 
+        # Derive tool_name if not provided
+        effective_tool_name = tool_name or f"{module_name}_reconciliation"
+
         document = {
             "invoice_no": invoice_no,
             "module": module_name,
+            "tool_name": effective_tool_name,
             "created_at": datetime.now(),
             "summary": summary_data,
             "line_items": line_items_data,
@@ -102,11 +110,32 @@ def save_reconciliation_report(
         }
 
         # Insert to collection (keeps history - no upsert)
-        collection.insert_one(document)
+        result = collection.insert_one(document)
+        report_id = str(result.inserted_id)
         
-        # Also log to central downloads collection for unified tracking
+        # Register in centralized report_registry
+        user = st.session_state.get("user", "anonymous")
         try:
-            user = st.session_state.get("user", "anonymous")
+            register_report_info(
+                module_name=module_name,
+                tool_name=effective_tool_name,
+                report_name=f"Reconciliation_{invoice_no}",
+                report_id=report_id,
+                user_email=user,
+                filename=f"Invoice_{invoice_no}",
+                row_count=row_count,
+                metadata={
+                    "invoice_no": invoice_no,
+                    "target_collection": collection_name,
+                    "type": "reconciliation_save",
+                    **(metadata or {})
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Registry log error: {e}")
+        
+        # Also log to central downloads collection for unified tracking (legacy)
+        try:
             log_report_download(
                 user_email=user,
                 module=module_name,
@@ -135,24 +164,29 @@ def save_report(
     module_name: str,
     report_name: str,
     data: Any,
+    tool_name: str = None,
     collection_name: Optional[str] = None,
     metadata: Optional[Dict] = None
 ) -> bool:
     """
-    General-purpose report save function.
+    General-purpose report save function with centralized tracking.
     
     Args:
         module_name: Name of the calling module
         report_name: Human-readable name of the report
         data: Report data (DataFrame, dict, or list)
-        collection_name: Optional custom collection name (defaults to 'report_downloads')
+        tool_name: Name of the tool generating the report (optional, derived from module if not provided)
+        collection_name: Optional custom collection name (defaults to module_name)
         metadata: Optional additional metadata
     
     Returns:
         bool: True if save was successful, False otherwise
     """
     try:
-        from common.mongo import get_db, log_report_download, MONGO_CONNECTED
+        from common.mongo import (
+            get_db, log_report_download, MONGO_CONNECTED, 
+            save_report_with_tracking
+        )
         
         if not MONGO_CONNECTED:
             return False
@@ -179,40 +213,23 @@ def save_report(
             
         user = st.session_state.get("user", "anonymous")
         
-        # If custom collection specified, save there directly
-        if collection_name:
-            db = get_db()
-            if db is None:
-                return False
-            collection = db[collection_name]
-            
-            document = {
-                "module": module_name,
-                "report_name": report_name,
-                "created_at": datetime.now(),
-                "data": data_to_save,
-                "metadata": {
-                    "row_count": row_count,
-                    "column_count": col_count,
-                    "user": user,
-                    **(metadata or {})
-                }
-            }
-            collection.insert_one(document)
+        # Derive tool_name from module_name if not provided
+        effective_tool_name = tool_name or f"{module_name}_tool"
         
-        # Always log to central collection
-        log_report_download(
-            user_email=user,
-            module=module_name,
+        # Use the new tracking function
+        filename = f"auto_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        report_id = save_report_with_tracking(
+            module_name=collection_name or module_name,
+            tool_name=effective_tool_name,
             report_name=report_name,
-            filename=f"auto_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             df_data=data,
-            row_count=row_count,
-            col_count=col_count,
+            user_email=user,
+            filename=filename,
             metadata=metadata
         )
         
-        return True
+        return report_id is not None
         
     except Exception as e:
         logger.error(f"Save report error: {e}")
@@ -225,6 +242,7 @@ def save_report(
 
 def save_amazon_report(collection_name: str, invoice_no: str, 
                        summary_data: Any, line_items_data: Any, 
+                       tool_name: str = None,
                        metadata: Optional[Dict] = None) -> bool:
     """Convenience wrapper for Amazon module."""
     return save_reconciliation_report(
@@ -233,12 +251,14 @@ def save_amazon_report(collection_name: str, invoice_no: str,
         invoice_no=invoice_no,
         summary_data=summary_data,
         line_items_data=line_items_data,
+        tool_name=tool_name or "amazon_reconciliation",
         metadata=metadata
     )
 
 
 def save_flipkart_report(collection_name: str, invoice_no: str,
                          summary_data: Any, line_items_data: Any,
+                         tool_name: str = None,
                          metadata: Optional[Dict] = None) -> bool:
     """Convenience wrapper for Flipkart module."""
     return save_reconciliation_report(
@@ -247,12 +267,14 @@ def save_flipkart_report(collection_name: str, invoice_no: str,
         invoice_no=invoice_no,
         summary_data=summary_data,
         line_items_data=line_items_data,
+        tool_name=tool_name or "flipkart_reconciliation",
         metadata=metadata
     )
 
 
 def save_generic_reconciliation_report(collection_name: str, invoice_no: str,
                                         summary_data: Any, line_items_data: Any,
+                                        tool_name: str = None,
                                         metadata: Optional[Dict] = None) -> bool:
     """Convenience wrapper for Reconciliation module."""
     return save_reconciliation_report(
@@ -261,12 +283,14 @@ def save_generic_reconciliation_report(collection_name: str, invoice_no: str,
         invoice_no=invoice_no,
         summary_data=summary_data,
         line_items_data=line_items_data,
+        tool_name=tool_name or "generic_reconciliation",
         metadata=metadata
     )
 
 
 def save_leakage_report(collection_name: str, invoice_no: str,
                         summary_data: Any, line_items_data: Any,
+                        tool_name: str = None,
                         metadata: Optional[Dict] = None) -> bool:
     """Convenience wrapper for Leakage Reconciliation module."""
     return save_reconciliation_report(
@@ -275,12 +299,14 @@ def save_leakage_report(collection_name: str, invoice_no: str,
         invoice_no=invoice_no,
         summary_data=summary_data,
         line_items_data=line_items_data,
+        tool_name=tool_name or "leakage_reconciliation",
         metadata=metadata
     )
 
 
 def save_stockmovement_report(collection_name: str, invoice_no: str,
                                summary_data: Any, line_items_data: Any,
+                               tool_name: str = None,
                                metadata: Optional[Dict] = None) -> bool:
     """Convenience wrapper for Stock Movement module."""
     return save_reconciliation_report(
@@ -289,5 +315,6 @@ def save_stockmovement_report(collection_name: str, invoice_no: str,
         invoice_no=invoice_no,
         summary_data=summary_data,
         line_items_data=line_items_data,
+        tool_name=tool_name or "stock_movement",
         metadata=metadata
     )

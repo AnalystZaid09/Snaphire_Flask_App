@@ -10,7 +10,7 @@
         <span style="color: #6b7280; font-weight: 500;">{{ module_display }}</span>
     </div>
     <h1 class="page-title">{{ module_display }}</h1>
-    <p class="page-subtitle">Select a tool to open in a new window</p>
+    <p class="page-subtitle">Select a tool to launch</p>
 </div>
 
 <div class="card-grid">
@@ -29,8 +29,8 @@
             {{ tool.display_name }}
         </div>
         <div class="card-url"></div>
-        <a href="{{ url_for('tool_page', module_name=module_name, tool_name=tool.filename) }}" class="open-btn"
-            target="_blank">Launch Tool</a>
+        <a href="{{ url_for('tool_page', module_name=module_name, tool_name=tool.filename) }}" class="open-btn">Launch
+            Tool</a>
     </div>
     {% endfor %}
 </div>

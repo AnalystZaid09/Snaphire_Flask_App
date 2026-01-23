@@ -9,10 +9,12 @@ from common.ui_utils import (
     get_download_filename, 
     render_header,
     download_module_report,
-    to_excel
+    to_excel,
+    auto_save_generated_reports
 )
 
 MODULE_NAME = "amazon"
+TOOL_NAME = "amazon_oos"  # Tool identifier for MongoDB tracking
 
 # Page configuration
 st.set_page_config(
@@ -671,6 +673,19 @@ if business_file and purchase_master_file and inventory_file:
             no_of_days_inventory, doc_inventory_threshold
         )
         
+        # AUTO-SAVE reports to database for persistence
+        from common.ui_utils import auto_save_generated_reports
+        reports_to_save = {
+            "Business Pivot": Business_Pivot,
+            "OOS Report": OOS_Report,
+            "Inventory Report": Inventory_Report_Pivot,
+            "OOS Inventory": OOS_Inventory,
+            "Overstock Inventory": Overstock_Inventory,
+            "OOS Pivot": OOS_Pivot,
+            "Overstock Pivot": Overstock_Pivot
+        }
+        auto_save_generated_reports(reports_to_save, MODULE_NAME, tool_name=TOOL_NAME)
+        
         # Create tabs
         tab1, tab2, tab3 = st.tabs(["📊 Business Report", "📦 Inventory Report", "📋 Business Listing Report"])
         
@@ -697,7 +712,8 @@ if business_file and purchase_master_file and inventory_file:
                     report_name="Business Pivot",
                     button_label="📥 Download Business Pivot (with DOC colors)",
                     apply_doc_formatting=True,
-                    key="dl_business_pivot_main"
+                    key="dl_business_pivot_main",
+                    tool_name=TOOL_NAME
                 )
             
             with sub_tab2:
@@ -716,7 +732,8 @@ if business_file and purchase_master_file and inventory_file:
                     report_name="OOS Report",
                     button_label="📥 Download OOS Report (with DOC colors)",
                     apply_doc_formatting=True,
-                    key="dl_oos_report_main"
+                    key="dl_oos_report_main",
+                    tool_name=TOOL_NAME
                 )
                 
                 st.subheader("OOS Pivot Table")
@@ -726,7 +743,8 @@ if business_file and purchase_master_file and inventory_file:
                     module_name=MODULE_NAME,
                     report_name="OOS Pivot",
                     button_label="📥 Download OOS Pivot",
-                    key="oos_pivot_download"
+                    key="oos_pivot_download",
+                    tool_name=TOOL_NAME
                 )
             
             with sub_tab3:
@@ -745,7 +763,8 @@ if business_file and purchase_master_file and inventory_file:
                     report_name="Overstock Report",
                     button_label="📥 Download Overstock Report (with DOC colors)",
                     apply_doc_formatting=True,
-                    key="dl_overstock_report_main"
+                    key="dl_overstock_report_main",
+                    tool_name=TOOL_NAME
                 )
         
         # Tab 2: Inventory Report
@@ -771,7 +790,8 @@ if business_file and purchase_master_file and inventory_file:
                     report_name="Inventory Report",
                     button_label="📥 Download Inventory Report (with DOC colors)",
                     apply_doc_formatting=True,
-                    key="dl_inventory_report_main"
+                    key="dl_inventory_report_main",
+                    tool_name=TOOL_NAME
                 )
             
             with sub_tab2:
@@ -790,7 +810,8 @@ if business_file and purchase_master_file and inventory_file:
                     report_name="OOS Inventory (with DOC colors)",
                     button_label="📥 Download OOS Inventory (with DOC colors)",
                     apply_doc_formatting=True,
-                    key="oos_inventory_download"
+                    key="oos_inventory_download",
+                    tool_name=TOOL_NAME
                 )
                 
                 st.subheader("OOS Inventory Pivot Table")
@@ -800,7 +821,8 @@ if business_file and purchase_master_file and inventory_file:
                     module_name=MODULE_NAME,
                     report_name="OOS Inventory Pivot",
                     button_label="📥 Download OOS Inventory Pivot",
-                    key="oos_inventory_pivot_download"
+                    key="oos_inventory_pivot_download",
+                    tool_name=TOOL_NAME
                 )
             
             with sub_tab3:
@@ -819,7 +841,8 @@ if business_file and purchase_master_file and inventory_file:
                     report_name="Overstock Inventory (with DOC colors)",
                     button_label="📥 Download Overstock Inventory (with DOC colors)",
                     apply_doc_formatting=True,
-                    key="overstock_inventory_download"
+                    key="overstock_inventory_download",
+                    tool_name=TOOL_NAME
                 )
                 
                 st.subheader("Overstock Inventory Pivot Table")
@@ -829,7 +852,8 @@ if business_file and purchase_master_file and inventory_file:
                     module_name=MODULE_NAME,
                     report_name="Overstock Inventory Pivot",
                     button_label="📥 Download Overstock Inventory Pivot",
-                    key="overstock_inventory_pivot_download"
+                    key="overstock_inventory_pivot_download",
+                    tool_name=TOOL_NAME
                 )
         
         # Tab 3: Business Listing Report with DOC coloring
@@ -849,7 +873,8 @@ if business_file and purchase_master_file and inventory_file:
                 report_name="Business Listing Report (with DOC colors)",
                 button_label="📥 Download Business Listing Report (with DOC colors)",
                 apply_doc_formatting=True,
-                key="business_listing_download"
+                key="business_listing_download",
+                tool_name=TOOL_NAME
             )
             
     except Exception as e:

@@ -1,0 +1,182 @@
+import streamlit as st
+import pandas as pd
+from datetime import datetime, timedelta
+from common.mongo import get_report_registry, get_report_data, get_module_list
+from common.ui_utils import (
+    apply_professional_style, 
+    render_header, 
+    download_module_report,
+    to_excel
+)
+
+# Page configuration
+st.set_page_config(
+    page_title="Report History Dashboard",
+    page_icon="📅",
+    layout="wide"
+)
+
+# Apply styling
+apply_professional_style()
+
+# Header
+render_header("Reports History Dashboard", "View and download previously generated reports stored in MongoDB")
+
+# Sidebar Filters
+with st.sidebar:
+    st.header("🔍 Filters")
+    
+    # DB Status Check
+    from common.mongo import MONGO_CONNECTED, MONGO_DB_NAME, refresh_mongo_config
+    if MONGO_CONNECTED:
+        st.success(f"📟 Connected to Atlas: `{MONGO_DB_NAME}`")
+        if st.button("🔄 Force Reconnect Atlas", use_container_width=True):
+            if refresh_mongo_config():
+                st.success("✅ Reconnected!")
+                st.rerun()
+            else:
+                st.error("❌ Reconnection failed")
+    else:
+        st.error("📟 MongoDB: Disconnected")
+        if st.button("🔌 Attempt Connection", use_container_width=True):
+            if refresh_mongo_config():
+                st.success("✅ Connected to Atlas!")
+                st.rerun()
+            else:
+                st.error("❌ Connection failed. Check .env and internet.")
+    
+    # Date Range Filter
+    today = datetime.now()
+    default_start = today - timedelta(days=7)
+    
+    date_range = st.date_input(
+        "Date Range",
+        value=(default_start, today),
+        max_value=today
+    )
+    
+    # Module Filter
+    available_modules = get_module_list()
+    module_filter = st.multiselect(
+        "Filter by Module",
+        options=available_modules,
+        default=[]
+    )
+    
+    # Limit Filter
+    limit = st.selectbox("Limit Results", [50, 100, 200, 500], index=1)
+    
+    if st.button("🔄 Refresh Data", use_container_width=True):
+        st.rerun()
+
+# Main Content
+try:
+    # Prepare query dates
+    start_dt = None
+    end_dt = None
+    if isinstance(date_range, tuple) and len(date_range) == 2:
+        start_dt = datetime.combine(date_range[0], datetime.min.time())
+        end_dt = datetime.combine(date_range[1], datetime.max.time())
+    
+    # Fetch registry data
+    # Note: We'll filter modules in memory for now if multiple selected
+    # or loop through them if needed. For now, handle single/none in get_report_registry
+    # we'll fetch all in range and filter manually for speed
+    
+    registry_entries = get_report_registry(
+        limit=limit,
+        start_date=start_dt,
+        end_date=end_dt
+    )
+    
+    if not registry_entries:
+        st.info("📭 No reports found for the selected filters.")
+    else:
+        # Convert to DataFrame for display
+        df_registry = pd.DataFrame(registry_entries)
+        
+        # Friendly column names and formatting
+        display_cols = {
+            "module_name": "Module",
+            "tool_name": "Tool",
+            "report_name": "Report Name",
+            "generated_at": "Generated At",
+            "generated_by": "User",
+            "row_count": "Rows"
+        }
+        
+        # Manual module filtering if needed
+        if module_filter:
+            df_registry = df_registry[df_registry['module_name'].isin(module_filter)]
+            
+        if df_registry.empty:
+            st.warning("⚠️ No reports match the selected module filters.")
+        else:
+            # Reorder and rename
+            df_view = df_registry[list(display_cols.keys())].copy()
+            df_view = df_view.rename(columns=display_cols)
+            
+            # Format date
+            df_view['Generated At'] = pd.to_datetime(df_view['Generated At']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Display Table
+            st.subheader(f"Recent Reports ({len(df_view)})")
+            
+            # Adding a selector for report details
+            selected_idx = st.selectbox(
+                "Select a report to view/download details:",
+                options=df_view.index,
+                format_func=lambda i: f"{df_view.loc[i, 'Generated At']} | {df_view.loc[i, 'Module']} | {df_view.loc[i, 'Tool']} | {df_view.loc[i, 'Report Name']}"
+            )
+            
+            st.dataframe(df_view, use_container_width=True, height=400)
+            
+            # Detailed View & Download for selected report
+            if selected_idx is not None:
+                st.markdown("---")
+                selected_report = registry_entries[selected_idx]
+                
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.write(f"### 📄 Details: {selected_report['report_name']}")
+                    st.write(f"**Report ID:** `{selected_report.get('report_id', 'N/A')}`")
+                    st.write(f"**Generated By:** {selected_report['generated_by']}")
+                    st.write(f"**Tool:** `{selected_report['tool_name']}`")
+                
+                with col2:
+                    st.write("### 📥 Actions")
+                    if st.button("🔍 Fetch Report Data", type="primary", use_container_width=True):
+                        with st.spinner("Retrieving full data from MongoDB..."):
+                            full_df = get_report_data(
+                                selected_report['module_name'], 
+                                selected_report['report_id']
+                            )
+                            
+                            if not full_df.empty:
+                                st.session_state['historical_df'] = full_df
+                                st.session_state['active_report_name'] = selected_report['report_name']
+                                st.success(f"✅ Successfully retrieved {len(full_df)} rows!")
+                            else:
+                                st.error("❌ Could not retrieve report data. It might have been deleted or archived.")
+                
+                # Show retrieved data and download button
+                if 'historical_df' in st.session_state:
+                    st.markdown("---")
+                    st.write(f"#### Data Preview: {st.session_state.get('active_report_name', '')}")
+                    st.dataframe(st.session_state['historical_df'].head(500), use_container_width=True)
+                    
+                    download_module_report(
+                        df=st.session_state['historical_df'],
+                        module_name=selected_report['module_name'],
+                        report_name=st.session_state['active_report_name'],
+                        button_label="📥 Download Full Historical Report (Excel)",
+                        key=f"dl_history_{selected_report['report_id']}"
+                    )
+
+except Exception as e:
+    st.error(f"❌ Error loading dashboard: {str(e)}")
+    st.exception(e)
+
+st.markdown("---")
+st.caption("Reports are limited to the most recent 10,000 rows for performance and storage limits.")

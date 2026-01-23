@@ -18,6 +18,7 @@ MODULE_DISPLAY_NAMES = {
     "reconciliation": "PO Reconciliation",
     "stockmovement": "Stock Movement",
     "leakagereconciliation": "Leakage Reconciliation",
+    "system": "System Management",
 }
 
 # Login required decorator

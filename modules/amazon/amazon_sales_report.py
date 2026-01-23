@@ -17,6 +17,7 @@ from datetime import datetime
 
 # Module name for MongoDB collection
 MODULE_NAME = "amazon"
+TOOL_NAME = "amazon_sales_report"
 
 # --------------------------------------------------
 # Page config
@@ -370,7 +371,7 @@ if st.button("🚀 Generate Analysis", type="primary", use_container_width=True)
     }
     
     # AUTO-SAVE all reports to MongoDB immediately
-    auto_save_generated_reports(all_reports, MODULE_NAME)
+    auto_save_generated_reports(all_reports, MODULE_NAME, tool_name=TOOL_NAME)
     
     download_multi_sheet_excel(
         reports=all_reports,

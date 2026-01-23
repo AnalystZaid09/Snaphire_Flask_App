@@ -14,6 +14,7 @@ import logging
 import urllib.parse
 import re
 import certifi
+import pandas as pd
 
 # Load environment variables (override=True ensures .env wins)
 load_dotenv(override=True)
@@ -129,8 +130,13 @@ def init_mongo_connection(max_retries=3):
             MONGO_CONNECTED = True
             logger.info(f"✅ MongoDB connected successfully to {MONGO_DB_NAME}")
             return True
-        except (ServerSelectionTimeoutError, ConfigurationError) as e:
-            logger.warning(f"MongoDB connection attempt {attempt + 1}/{max_retries} failed: {e}")
+        except ServerSelectionTimeoutError as e:
+            logger.warning(f"MongoDB connection timeout {attempt + 1}/{max_retries}: {e}")
+        except ConfigurationError as e:
+            logger.error(f"MongoDB configuration error (check URI): {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected MongoDB error during connect: {e}")
             if attempt == max_retries - 1:
                 logger.error(f"❌ MongoDB connection failed after {max_retries} attempts")
                 # Create fallback client without ping verification
@@ -144,6 +150,25 @@ def init_mongo_connection(max_retries=3):
             logger.error(f"Unexpected MongoDB error: {e}")
             return False
     return False
+    
+def refresh_mongo_config():
+    """Reload environment and reconnect to MongoDB."""
+    global MONGO_URI, MONGO_DB_NAME, MONGO_CONNECTED, client, db
+    load_dotenv(override=True)
+    MONGO_URI = _get_safe_mongo_uri()
+    MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "report_app").strip()
+    
+    # Reset existing connection
+    if client:
+        try:
+            client.close()
+        except:
+            pass
+    client = None
+    db = None
+    MONGO_CONNECTED = False
+    
+    return init_mongo_connection()
 
 # Initialize on module load
 init_mongo_connection()
@@ -483,6 +508,214 @@ def save_and_track_report(module_name: str, report_name: str, df_data=None,
     return True
 
 
+# =============================================================================
+# Enhanced Report Saving with Tool Name Support (NEW)
+# =============================================================================
+
+def get_report_registry_collection():
+    """Get the report_registry collection for centralized tracking."""
+    return get_collection("report_registry")
+
+
+def register_report_info(
+    module_name: str,
+    tool_name: str,
+    report_name: str,
+    report_id: str = None,
+    user_email: str = None,
+    filename: str = None,
+    row_count: int = 0,
+    metadata: dict = None
+) -> bool:
+    """
+    Register report info in the centralized report_registry collection.
+    This provides a lightweight lookup for all reports across modules.
+    
+    Args:
+        module_name: Module name (amazon, flipkart, reconciliation, etc.)
+        tool_name: Tool name (amazon_sales_report, flipkart_oos, etc.)
+        report_name: Human-readable report name
+        report_id: Reference to full report in module collection (optional)
+        user_email: User who generated the report
+        filename: Downloaded filename
+        row_count: Number of rows in the report
+        metadata: Additional metadata
+    
+    Returns:
+        bool: True if successful
+    """
+    if not MONGO_CONNECTED:
+        logger.warning("MongoDB not connected, skipping report registry")
+        return False
+    
+    try:
+        registry = get_report_registry_collection()
+        if registry is None:
+            return False
+        
+        document = {
+            "module_name": module_name,
+            "tool_name": tool_name,
+            "report_name": report_name,
+            "report_id": report_id,
+            "generated_at": datetime.now(),
+            "generated_by": user_email or "anonymous",
+            "row_count": row_count,
+            "filename": filename,
+            "metadata": metadata or {}
+        }
+        
+        registry.insert_one(document)
+        logger.info(f"📋 Report registered: {module_name}/{tool_name}/{report_name}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Report registry error: {e}")
+        return False
+
+
+def save_report_with_tracking(
+    module_name: str,
+    tool_name: str,
+    report_name: str,
+    df_data=None,
+    user_email: str = None,
+    filename: str = None,
+    metadata: dict = None
+) -> str:
+    """
+    Save a report to module collection AND register in central registry.
+    
+    This is the primary function to use for saving reports. It:
+    1. Saves full report data to the module-specific collection
+    2. Registers lightweight info in report_registry for centralized tracking
+    
+    Args:
+        module_name: Module name (amazon, flipkart, reconciliation, etc.)
+        tool_name: Tool name (amazon_sales_report, flipkart_oos, etc.)
+        report_name: Human-readable report name
+        df_data: DataFrame or list data to save
+        user_email: User who generated the report
+        filename: Downloaded filename
+        metadata: Additional metadata
+    
+    Returns:
+        str: Report ID if successful, None otherwise
+    """
+    if not MONGO_CONNECTED:
+        logger.warning("MongoDB not connected, skipping report save")
+        return None
+    
+    try:
+        database = get_db()
+        if database is None:
+            return None
+        
+        # Get or create module collection
+        collection = database[module_name]
+        
+        # Convert DataFrame to records
+        report_data = None
+        row_count = 0
+        col_count = 0
+        
+        if df_data is not None:
+            if hasattr(df_data, 'to_dict'):
+                row_count = len(df_data)
+                col_count = len(df_data.columns) if hasattr(df_data, 'columns') else 0
+                # Cap at 10K rows for MongoDB document size limit
+                report_data = df_data.head(10000).to_dict(orient='records')
+            elif isinstance(df_data, list):
+                row_count = len(df_data)
+                report_data = df_data[:10000]
+        
+        # Create document for module collection
+        document = {
+            "tool_name": tool_name,
+            "report_name": report_name,
+            "generated_at": datetime.now(),
+            "generated_by": user_email or "anonymous",
+            "row_count": row_count,
+            "column_count": col_count,
+            "data": report_data,
+            "metadata": metadata or {},
+            "downloads": []
+        }
+        
+        # Insert to module collection
+        result = collection.insert_one(document)
+        report_id = str(result.inserted_id)
+        
+        logger.info(f"✅ Report saved: {module_name}/{tool_name}/{report_name} (ID: {report_id})")
+        
+        # Register in central registry
+        register_report_info(
+            module_name=module_name,
+            tool_name=tool_name,
+            report_name=report_name,
+            report_id=report_id,
+            user_email=user_email,
+            filename=filename,
+            row_count=row_count,
+            metadata=metadata
+        )
+        
+        return report_id
+        
+    except Exception as e:
+        logger.error(f"Error saving report with tracking: {e}")
+        return None
+
+
+def get_report_registry(
+    module_name: str = None,
+    tool_name: str = None,
+    limit: int = 100,
+    start_date: datetime = None,
+    end_date: datetime = None
+) -> list:
+    """
+    Query the report registry for tracking information.
+    
+    Args:
+        module_name: Filter by module (optional)
+        tool_name: Filter by tool (optional)
+        limit: Maximum number of results
+        start_date: Filter by start date (optional)
+        end_date: Filter by end date (optional)
+    
+    Returns:
+        list: List of registry entries
+    """
+    if not MONGO_CONNECTED:
+        return []
+    
+    try:
+        registry = get_report_registry_collection()
+        if registry is None:
+            return []
+        
+        # Build query
+        query = {}
+        if module_name:
+            query["module_name"] = module_name
+        if tool_name:
+            query["tool_name"] = tool_name
+        if start_date or end_date:
+            query["generated_at"] = {}
+            if start_date:
+                query["generated_at"]["$gte"] = start_date
+            if end_date:
+                query["generated_at"]["$lte"] = end_date
+        
+        results = list(registry.find(query).sort("generated_at", -1).limit(limit))
+        return results
+        
+    except Exception as e:
+        logger.error(f"Error querying report registry: {e}")
+        return []
+
+
 def get_module_reports(module_name: str, limit: int = 50):
     """
     Get recent reports from a module collection.
@@ -514,4 +747,53 @@ def get_module_reports(module_name: str, limit: int = 50):
         
     except Exception as e:
         logger.error(f"Error fetching reports: {e}")
+        return []
+
+def get_report_data(module_name: str, report_id: str) -> pd.DataFrame:
+    """
+    Fetch the full data for a specific report and return as DataFrame.
+    """
+    if not MONGO_CONNECTED:
+        return pd.DataFrame()
+    
+    try:
+        from bson import ObjectId
+        database = get_db()
+        if database is None:
+            return pd.DataFrame()
+        
+        collection = database[module_name]
+        report = collection.find_one({"_id": ObjectId(report_id)})
+        
+        if not report:
+            return pd.DataFrame()
+            
+        # Handle regular report data
+        if "data" in report:
+            return pd.DataFrame(report["data"])
+        # Handle reconciliation summary data
+        elif "summary" in report:
+            return pd.DataFrame(report["summary"])
+            
+        return pd.DataFrame()
+        
+    except Exception as e:
+        logger.error(f"Error fetching report data: {e}")
+        return pd.DataFrame()
+
+def get_module_list() -> list:
+    """
+    Get list of all modules that have saved reports in the registry.
+    """
+    if not MONGO_CONNECTED:
+        return []
+        
+    try:
+        registry = get_report_registry_collection()
+        if registry is None:
+            return []
+            
+        return sorted(registry.distinct("module_name"))
+    except Exception as e:
+        logger.error(f"Error getting module list: {e}")
         return []

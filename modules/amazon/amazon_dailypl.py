@@ -7,10 +7,11 @@ import os
 import xlsxwriter
 from common.mongo import save_reconciliation_report
 from datetime import datetime
-from common.ui_utils import apply_professional_style, render_header
+from common.ui_utils import apply_professional_style, render_header, auto_save_generated_reports
 
-# Page configuration is handled by the main app
-apply_professional_style()
+# Module name and Tool name for MongoDB tracking
+MODULE_NAME = "amazon"
+TOOL_NAME = "amazon_daily_pl"
 
 render_header("Amazon Daily-P&L", "Upload your Amazon transaction CSV and Purchase Master (PM) Excel file to analyze profits.")
 
@@ -319,21 +320,14 @@ if transaction_file and pm_file:
         final_df = final_df[available_cols].copy()
         final_df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
-        # Save to MongoDB
-        try:
-            save_reconciliation_report(
-                collection_name="amazon_daily_pl",
-                invoice_no=f"AMAZON_PL_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                summary_data={
-                    "total_sales": float(final_df["Sales Proceed"].sum()) if "Sales Proceed" in final_df.columns else 0,
-                    "total_profit": float(final_df["Profit"].sum()) if "Profit" in final_df.columns else 0,
-                    "total_rows": len(final_df)
-                },
-                line_items_data=final_df,
-                metadata={"report_type": "amazon_daily_pl"}
-            )
-        except Exception:
-            pass
+        # Prepare all reports for auto-save
+        reports_to_save = {
+            "Amazon Daily P&L": final_df,
+            "Filtered P&L View": filtered
+        }
+        
+        # AUTO-SAVE to MongoDB for persistence
+        auto_save_generated_reports(reports_to_save, MODULE_NAME, tool_name=TOOL_NAME)
 
         # Store original name for download buttons
         orig_name = getattr(transaction_file, "name", "transactions.csv")

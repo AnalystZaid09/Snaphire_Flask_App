@@ -8,10 +8,12 @@ from common.ui_utils import (
     apply_professional_style, 
     get_download_filename, 
     render_header,
-    download_module_report
+    download_module_report,
+    auto_save_generated_reports
 )
 
 MODULE_NAME = "amazon"
+TOOL_NAME = "amazon_ris"
 
 # Page configuration
 st.set_page_config(
@@ -197,17 +199,13 @@ with st.sidebar:
                     # Store processed data
                     st.session_state.processed_data = ris_df
                     
-                    # Save to MongoDB
-                    try:
-                         save_reconciliation_report(
-                            collection_name="amazon_ris",
-                            invoice_no=f"RIS_{pd.Timestamp.now().strftime('%Y%m%d%H%M')}",
-                            summary_data=pd.DataFrame([{"Total Records": len(ris_df)}]),
-                            line_items_data=ris_df,
-                            metadata={"type": "ris_analysis"}
-                        )
-                    except Exception as e:
-                        pass
+                    # Prepare all results for auto-save
+                    reports_to_save = {
+                        "Processed RIS Data": ris_df
+                    }
+                    
+                    # AUTO-SAVE to MongoDB for persistence
+                    auto_save_generated_reports(reports_to_save, MODULE_NAME, tool_name=TOOL_NAME)
                     
                     # Generate all pivots
                     results = {}
@@ -379,6 +377,20 @@ with st.sidebar:
                     results['state_fc'] = state_fc
                     
                     st.session_state.all_results = results
+                    st.session_state.processed_data = results['processed']
+                    
+                    # AUTO-SAVE generated reports to database
+                    reports_to_save = {
+                        "RIS Processed Data": results['processed'],
+                        "Brand-wise RIS": results.get('brand_wise'),
+                        "ASIN-wise RIS": results.get('asin_wise'),
+                        "Cluster-wise RIS": results.get('cluster_wise'),
+                        "State Cluster Detail": results.get('state_cluster')
+                    }
+                    # Filter out None values
+                    reports_to_save = {k: v for k, v in reports_to_save.items() if v is not None}
+                    auto_save_generated_reports(reports_to_save, MODULE_NAME, tool_name=TOOL_NAME)
+
                     st.success("✅ Data processed successfully!")
                     
                 except Exception as e:
