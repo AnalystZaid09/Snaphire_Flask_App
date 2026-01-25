@@ -454,7 +454,7 @@ def log_download_event(module_name: str, report_name: str, filename: str, tool_n
     logger.info(f"📋 Queued download history: {report_name}")
     
     # Also try immediate save
-    if MONGO_AVAILABLE:
+    if is_mongo_available():
         try:
             from common.mongo import history_col
             if history_col is not None:
@@ -608,7 +608,7 @@ def auto_log_reports(reports_dict: Dict[str, pd.DataFrame], module_name: str):
     Automatically log multiple reports to MongoDB without waiting for download clicks.
     Useful for tools that generate multiple outputs at once.
     """
-    if not MONGO_AVAILABLE or not log_report_download:
+    if not is_mongo_available() or not log_report_download:
         return False
     
     user = st.session_state.get("user", "anonymous")
@@ -742,7 +742,7 @@ def download_module_report(df: pd.DataFrame, module_name: str, report_name: str,
     report_hash = f"{report_name}_{len(df) if hasattr(df, '__len__') else 0}"
     
     # Auto-save if not already saved this session
-    if report_hash not in st.session_state[saved_key] and MONGO_AVAILABLE:
+    if report_hash not in st.session_state[saved_key] and is_mongo_available():
         try:
             user = st.session_state.get("user", "anonymous")
             auto_filename = f"auto_{get_download_filename(report_name.replace(' ', '_'))}"
@@ -847,7 +847,7 @@ def save_module_reports_on_generate(reports: Dict[str, pd.DataFrame], module_nam
         reports: Dict of {report_name: DataFrame}
         module_name: Module/collection name
     """
-    if not MONGO_AVAILABLE or not save_module_report:
+    if not is_mongo_available() or not save_module_report:
         return
     
     user = st.session_state.get("user", "anonymous")
