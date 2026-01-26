@@ -45,110 +45,169 @@ except ImportError:
 
 
 def apply_professional_style():
-    """Restores the original Fixed-Sidebar logic (Version 1)."""
+    """Finalized ultra-aggressive UI styling to force professional LIGHT mode across all tools."""
     st.markdown("""
         <style>
-        /* ======== FORCE LIGHT MODE ======== */
+        /* ======== FORCE LIGHT MODE (ULTRA) ======== */
         :root {
             color-scheme: light !important;
+            --primary-color: #1e40af !important;
+            --background-color: #ffffff !important;
+            --secondary-background-color: #f8fafc !important;
+            --text-color: #1f2937 !important;
         }
         
-        /* ======== FORCE SIDEBAR PERMANENTLY VISIBLE ======== */
-        /* Ultra-aggressive hiding of collapse/expand arrows and all header buttons */
-        [data-testid="collapsedControl"], 
-        header button, 
-        button[aria-label="Collapse sidebar"], 
-        button[aria-label="Expand sidebar"],
-        [data-testid="stHeader"] button,
-        .st-emotion-cache-6qob1r { 
-            display: none !important;
-            visibility: hidden !important;
-            width: 0 !important;
-            height: 0 !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
-        
-        /* Hide any SVG icons that look like arrows in the sidebar area */
-        [data-testid="stSidebar"] svg {
-            display: none !important;
-        }
-        
-        /* Force sidebar to be a fixed side-panel that cannot move */
-        section[data-testid="stSidebar"] {
-            min-width: 320px !important;
-            max-width: 350px !important;
-            width: 320px !important;
-            transform: none !important;
-            transition: none !important;
-            position: relative !important;
-            z-index: 1 !important;
-            left: 0 !important;
-            margin-left: 0 !important;
-            background-color: #f8fafc !important;
-            border-right: 1px solid #e2e8f0 !important;
-        }
-        
-        /* Handle the main content area to follow the fixed sidebar */
-        [data-testid="stMainViewContainer"] {
-            margin-left: 0 !important;
-        }
-
-        /* Hide the top header bar (Deploy, Help, etc.) */
-        header[data-testid="stHeader"] {
-            display: none !important;
-            height: 0 !important;
-        }
-        
-        /* ======== PREMIUM UI ELEMENTS ======== */
-        .stApp {
+        /* Force app background and all text headings/paragraphs */
+        .stApp, [data-testid="stAppViewContainer"], .main {
             background-color: #ffffff !important;
+        }
+        
+        .stApp p, .stApp span, .stApp label, .stApp div, .stApp li {
+            color: #1f2937 !important;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            color: #1e3a8a !important;
             font-family: 'Inter', 'Segoe UI', sans-serif !important;
         }
 
-        .report-header {
-            text-align: center;
-            padding: 1rem 0;
-            margin-bottom: 2rem;
-            background: #fdfdfd;
-            border-bottom: 1px dashed #3b82f633;
-            border-radius: 8px;
+        /* ======== SIDEBAR STYLING ======== */
+        section[data-testid="stSidebar"] {
+            background-color: #f8fafc !important;
+            border-right: 1px solid #e2e8f0 !important;
+            min-width: 330px !important;
         }
         
-        .report-title {
-            color: #1e3a8a !important;
-            font-size: 1.7rem !important;
-            font-weight: 700 !important;
+        [data-testid="stSidebar"] .st-emotion-cache-1kyx73u, 
+        [data-testid="stSidebar"] [data-testid="stVerticalBlock"],
+        [data-testid="stSidebarNav"] {
+            background-color: #f8fafc !important;
         }
 
+        /* Hide Streamlit elements */
+        [data-testid="collapsedControl"], header, [data-testid="stHeader"], footer {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        /* ======== FORM ELEMENTS ======== */
+        /* Universal background reset for all inputs to white */
+        div[data-baseweb="select"] > div,
+        div[data-baseweb="input"] > div,
+        div[data-baseweb="textarea"] > div,
+        div[data-baseweb="base-input"] > div,
+        .stTextInput input, .stNumberInput input, .stTextArea textarea {
+            background-color: #ffffff !important;
+            color: #1f2937 !important;
+            border-color: #cbd5e1 !important;
+            border-radius: 8px !important;
+        }
+
+        /* Dropdowns, Popovers, Menus */
+        div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"], [data-testid="stTooltipHoverTarget"] {
+            background-color: #ffffff !important;
+            color: #1f2937 !important;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1) !important;
+        }
+        
+        li[role="option"], [data-baseweb="select"] li {
+            background-color: #ffffff !important;
+            color: #1f2937 !important;
+        }
+        
+        li[role="option"]:hover, [data-baseweb="select"] li:hover {
+            background-color: #eff6ff !important;
+            color: #1e40af !important;
+        }
+
+        /* Labels and Descriptions */
+        label, .st-at, .st-ae, .st-af, [data-testid="stMarkdownContainer"] p {
+            color: #334155 !important;
+        }
+
+        /* File Uploader styling */
+        [data-testid="stFileUploader"] {
+            border: 2px dashed #3b82f6 !important;
+            background-color: #f8fafc !important;
+            padding: 2rem !important;
+            border-radius: 12px !important;
+        }
+        
+        [data-testid="stFileUploader"] section {
+            background-color: transparent !important;
+        }
+
+        [data-testid="stFileUploader"] button {
+            background-color: #1e40af !important;
+            color: white !important;
+            border-radius: 8px !important;
+        }
+
+        /* ======== PREMIUM DASHBOARD ELEMENTS ======== */
         .stButton button {
             border-radius: 8px !important;
             background: #1e40af !important;
             color: white !important;
             font-weight: 600 !important;
             border: none !important;
+            padding: 0.5rem 2rem !important;
+            transition: all 0.2s ease !important;
         }
 
         .stButton button:hover {
             background: #1d4ed8 !important;
             transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1) !important;
         }
 
-        [data-testid="stSidebar"] p, [data-testid="stSidebar"] label {
-            color: #1f2937 !important;
-            font-weight: 500 !important;
+        /* Tabs */
+        .stTabs [data-baseweb="tab-list"] {
+            background-color: #f1f5f9 !important;
+            border-radius: 10px;
+            padding: 5px;
         }
         
-        [data-testid="stFileUploader"] {
-            border: 1px dashed #cbd5e1 !important;
-            background: #fdfdfd !important;
-            padding: 10px !important;
+        .stTabs [data-baseweb="tab"] {
+            color: #64748b !important;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            background-color: #ffffff !important;
+            color: #1e40af !important;
+            font-weight: 700 !important;
             border-radius: 8px !important;
         }
 
-        .stTabs [data-baseweb="tab-list"] {
-            background-color: #f1f5f9 !important;
-            border-radius: 8px;
+        /* Metrics - Keep the delta colors but ensure labels are dark */
+        [data-testid="stMetricValue"] {
+            color: #1e40af !important;
+        }
+        
+        [data-testid="stMetricLabel"] p {
+            color: #475569 !important;
+        }
+
+        /* Dataframes */
+        [data-testid="stDataFrame"], [data-testid="stTable"] {
+            background-color: #ffffff !important;
+            border-radius: 10px !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+
+        /* Fix for scrollbars in dark mode browsers */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
         </style>
     """, unsafe_allow_html=True)
