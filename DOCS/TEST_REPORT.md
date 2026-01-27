@@ -76,6 +76,21 @@ This report provides a functional breakdown and verification of the tools within
     - ✅ Advanced data styling: High-contrast color coding in Excel exports (Profit = Green, Loss = Red).
     - ✅ High-precision metrics: Real-time calculation of net margins across diverse brands.
 
+### 2. Flipkart RIS Analysis
+- **Functionality**: Evaluates regional fulfillment efficiency for Flipkart orders.
+- **Inputs**: 
+    - Sales Report (Excel)
+    - State FC Mapping (Excel)
+    - Purchase Master (Excel)
+- **Key Logic**: 
+    - Maps 100% of Warehouse IDs to respective States using provided mapping files.
+    - Implements specialized logic for Haryana/Delhi border variants to ensure regional accuracy.
+    - Generates multi-level pivot tables for Brands, FSNs, and States.
+- **Verification**:
+    - ✅ Automatic filtering of 'Return' events to focus on gross sales.
+    - ✅ Accurate join between Sales data and Product Master via FSN.
+    - ✅ Styling: High-readability conditional formatting in table views.
+
 ---
 
 ## ⚖️ Reconciliation & Leakage

@@ -16,6 +16,7 @@ The Amazon module focus on sales, inventory, and profitability analysis for Amaz
 Equivalent tools for Flipkart seller data.
 
 - **Flipkart OOS**: Out-of-stock analysis for Flipkart.
+- **Flipkart RIS New**: Regional Inventory Storage analyzer for Flipkart. Maps warehouse IDs to states and tracks RIS vs Non-RIS performance across brands and regions.
 - **Flipkart P&L**: Profit calculations specifically for Flipkart's marketplace.
 - **Flipkart Sales Report**: Comprehensive sales metrics for Flipkart.
 

@@ -2,14 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from io import BytesIO
-from common.ui_utils import (
-    apply_professional_style, 
-    get_download_filename, 
-    render_header,
-    download_module_report
-)
-
-MODULE_NAME = "flipkart"
 
 # Page configuration
 st.set_page_config(
@@ -17,7 +9,6 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
-apply_professional_style()
 
 # Custom CSS for better styling
 st.markdown("""
@@ -35,7 +26,8 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # Title
-render_header("Flipkart RIS Analysis Dashboard", "Analyze your Flipkart sales data and RIS status")
+st.title("🔍 Flipkart RIS Analysis Dashboard")
+st.markdown("Analyze your Flipkart sales data and RIS status")
 st.divider()
 
 # Helper function to convert DataFrame to Excel
@@ -218,14 +210,6 @@ with st.sidebar:
                     st.session_state.processed = True
                     
                     st.success("✅ Data processed successfully!")
-                    
-                    # Auto-log key reports to MongoDB
-                    from common.ui_utils import auto_log_reports
-                    auto_log_reports({
-                        "Brand RIS Analysis": brand_pivot,
-                        "State RIS Analysis": State_Wise_pivot
-                    }, "flipkart")
-                    
                     st.rerun()
                     
                 except Exception as e:
@@ -268,8 +252,7 @@ else:
         "🗺️ State Analysis",
         "📊 State-Brand Analysis"
     ])
-
-
+    
     # Tab 1: Sales Report
     with tab1:
         st.header("Sales Report with RIS Status")
@@ -289,13 +272,13 @@ else:
         
         st.divider()
         
-        # Download button using centralized utility
-        download_module_report(
-            df=st.session_state.sales_report,
-            module_name=MODULE_NAME,
-            report_name="Sales Report with RIS Status",
-            button_label="📥 Download Sales Report",
-            key="ris_sales_report"
+        # Download button
+        excel_data = to_excel(st.session_state.sales_report, 'Sales Report')
+        st.download_button(
+            label="📥 Download Sales Report",
+            data=excel_data,
+            file_name="sales_report_with_ris.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         
         # Display dataframe
@@ -323,13 +306,13 @@ else:
         
         st.divider()
         
-        # Download button using centralized utility
-        download_module_report(
-            df=brand_pivot.reset_index(),
-            module_name=MODULE_NAME,
-            report_name="Brand RIS Analysis",
-            button_label="📥 Download Brand Analysis",
-            key="ris_brand_analysis"
+        # Download button
+        excel_data = to_excel(brand_pivot.reset_index(), 'Brand Analysis')
+        st.download_button(
+            label="📥 Download Brand Analysis",
+            data=excel_data,
+            file_name="brand_ris_analysis.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         
         # Display pivot table
@@ -351,13 +334,13 @@ else:
         
         fsn_pivot = st.session_state.fsn_brand_pivot
         
-        # Download button using centralized utility
-        download_module_report(
-            df=fsn_pivot.reset_index(),
-            module_name=MODULE_NAME,
-            report_name="FSN Brand RIS Analysis",
-            button_label="📥 Download FSN-Brand Analysis",
-            key="ris_fsn_analysis"
+        # Download button
+        excel_data = to_excel(fsn_pivot.reset_index(), 'FSN Brand Analysis')
+        st.download_button(
+            label="📥 Download FSN-Brand Analysis",
+            data=excel_data,
+            file_name="fsn_brand_ris_analysis.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         
         # Display pivot table
@@ -390,13 +373,13 @@ else:
         
         st.divider()
         
-        # Download button using centralized utility
-        download_module_report(
-            df=state_pivot.reset_index(),
-            module_name=MODULE_NAME,
-            report_name="State RIS Analysis",
-            button_label="📥 Download State Analysis",
-            key="ris_state_analysis"
+        # Download button
+        excel_data = to_excel(state_pivot.reset_index(), 'State Analysis')
+        st.download_button(
+            label="📥 Download State Analysis",
+            data=excel_data,
+            file_name="state_ris_analysis.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         
         # Display pivot table
@@ -418,13 +401,13 @@ else:
         
         state_brand_pivot = st.session_state.state_brand_pivot
         
-        # Download button using centralized utility
-        download_module_report(
-            df=state_brand_pivot.reset_index(),
-            module_name=MODULE_NAME,
-            report_name="State Brand RIS Analysis",
-            button_label="📥 Download State-Brand Analysis",
-            key="ris_state_brand_analysis"
+        # Download button
+        excel_data = to_excel(state_brand_pivot.reset_index(), 'State Brand Analysis')
+        st.download_button(
+            label="📥 Download State-Brand Analysis",
+            data=excel_data,
+            file_name="state_brand_ris_analysis.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         
         # Display pivot table
@@ -446,5 +429,4 @@ st.markdown("""
     <div style='text-align: center; color: gray; padding: 20px;'>
         RIS Analysis Dashboard | Built with Streamlit
     </div>
-
     """, unsafe_allow_html=True)
