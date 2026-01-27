@@ -43,6 +43,20 @@ This report provides a functional breakdown and verification of the tools within
     - ✅ Dynamic role-based file requirements.
     - ✅ Automatic grand-summary metrics for rapid decision making.
 
+### 3. Amazon RIS New (Regional Dashboard)
+- **Functionality**: Detailed analysis of Regional Inventory Storage efficiency.
+- **Modes**: 
+    - **Portal**: Processes raw RIS.csv with state/cluster mapping.
+    - **Manager**: Processes weekly summary files with automated brand/ASIN mapping from PM files.
+- **Key Logic**: 
+    - Normalizes shipping states using fuzzy rule-sets (e.g., "DL" -> "Delhi").
+    - Calculates RIS vs Non-RIS split per Brand, Cluster, and State.
+    - Generates 7+ distinct pivot views for granular performance tracking.
+- **Verification**:
+    - ✅ Robust handling of inconsistent state names via `STATE_RULES`.
+    - ✅ Successful generation of complex pivots (Cluster-Brand, State-FC).
+    - ✅ Data preservation across session state for interactive filtering.
+
 ---
 
 ## 🛍️ Flipkart Module

@@ -8,6 +8,7 @@ The Amazon module focus on sales, inventory, and profitability analysis for Amaz
 - **Sales vs Return**: Analyzes the ratio of sales to returns over a specific period.
 - **Amazon OOS (Out of Stock)**: Identifies products that are out of stock or at risk of going out of stock.
 - **Amazon PO Working**: A dual-role analysis tool (Portal/Manager) that calculates Daily Run Rate (DRR) and Days of Coverage (DOC). It identifies low stock items (DOC ≤ 7) and performs Regional Inventory Storage (RIS) analysis to optimize stock distribution across Fulfillment Centers.
+- **Amazon RIS New**: Latest Regional Inventory Storage (RIS) dashboard featuring dual-mode processing (Portal/Manager). Provides in-depth analysis of stock distribution across clusters, states, and brands with automatic normalization of shipping data.
 - **P&L Analysis**: Daily, Monthly, and Quarterly Profit & Loss statements tailored for Amazon's fee structure.
 - **Sales Report**: General sales performance tracking.
 
