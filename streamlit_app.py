@@ -17,10 +17,22 @@ st.set_page_config(
 # Hide Streamlit UI elements when embedded (keep sidebar visible for file uploads)
 st.markdown("""
 <style>
-    #MainMenu {visibility: hidden;}
+    #MainMenu {visibility: visible; opacity: 0.1;}
+    #MainMenu:hover {opacity: 1;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stDeployButton {display: none;}
+    /* Force sidebar visibility and status toggle */
+    section[data-testid="stSidebar"] {
+        display: flex !important;
+        visibility: visible !important;
+    }
+    [data-testid="collapsedControl"],
+    button[data-testid="stSidebarCollapseButton"] {
+        display: flex !important;
+        position: fixed !important;
+        top: 5px !important;
+        left: 5px !important;
+        z-index: 1000000 !important;
+    }
     /* Keep sidebar visible for file uploaders */
     .block-container {
         padding-top: 1rem !important;

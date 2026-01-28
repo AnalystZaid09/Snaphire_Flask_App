@@ -20,7 +20,8 @@ TOOL_NAME = "amazon_oos"  # Tool identifier for MongoDB tracking
 st.set_page_config(
     page_title="Amazon OOS Inventory",
     page_icon="📦",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 apply_professional_style()
 

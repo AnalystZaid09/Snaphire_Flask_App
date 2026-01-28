@@ -84,10 +84,56 @@ def apply_professional_style():
             background-color: #f8fafc !important;
         }
 
-        /* Hide Streamlit elements */
-        [data-testid="collapsedControl"], header, [data-testid="stHeader"], footer {
+        /* Hide Streamlit elements (BUT keep collapsedControl for sidebar toggle) */
+        /* Hide standard Streamlit header elements to keep it clean */
+        [data-testid="stHeaderSettingsButton"], .stDeployButton, [data-testid="stAppViewMenu"], footer {
             display: none !important;
-            visibility: hidden !important;
+        }
+        
+        [data-testid="stHeader"] {
+            background: transparent !important;
+            border: none !important;
+            z-index: 99 !important;
+        }
+
+        /* FORCE Sidebar Visibility and make it static */
+        section[data-testid="stSidebar"] {
+            display: flex !important;
+            visibility: visible !important;
+            z-index: 100 !important;
+        }
+
+        /* Pinned Toggle Button - ensuring it's always accessible at top-left */
+        [data-testid="collapsedControl"], 
+        button[data-testid="stSidebarCollapseButton"] {
+            position: fixed !important;
+            top: 5px !important;
+            left: 5px !important;
+            z-index: 1000000 !important;
+            display: flex !important;
+            visibility: visible !important;
+            background: white !important;
+            border: 2px solid #1e40af !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
+            padding: 4px !important;
+            opacity: 1 !important;
+        }
+        
+        [data-testid="collapsedControl"] svg,
+        button[data-testid="stSidebarCollapseButton"] svg {
+            fill: #1e40af !important;
+        }
+
+        /* Ensure sidebar content doesn't get cut off */
+        [data-testid="stSidebar"] [data-testid="stSidebarHeader"] {
+            padding-top: 50px !important;
+        }
+
+        /* Adjust sidebar width to be more container-friendly */
+        section[data-testid="stSidebar"] {
+            min-width: 300px !important;
+            max-width: 350px !important;
         }
 
         /* ======== FORM ELEMENTS ======== */

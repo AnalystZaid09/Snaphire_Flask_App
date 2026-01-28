@@ -24,31 +24,35 @@
     <div class="layout">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
-            <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
-                <span class="toggle-icon">«</span>
-            </button>
-            <div class="sidebar-section">
-                <a href="{{ url_for('home') }}" class="sidebar-item home-btn">
-                    <span class="sidebar-icon">🏠</span>
-                    <span class="sidebar-text">Dashboard</span>
-                    <span class="tooltip-text">Dashboard</span>
-                </a>
-                <div class="sidebar-title">Modules</div>
-                {% for module in modules %}
-                <a href="{{ url_for('module_page', module_name=module.name) }}"
-                    class="sidebar-item {% if module.active %}active{% endif %}">
-                    <span class="sidebar-icon">
-                        {% if 'amazon' in module.name.lower() %}📦
-                        {% elif 'flipkart' in module.name.lower() %}🛒
-                        {% elif 'leakage' in module.name.lower() %}🔍
-                        {% elif 'reconciliation' in module.name.lower() %}🔄
-                        {% elif 'stock' in module.name.lower() %}📈
-                        {% else %}📁{% endif %}
-                    </span>
-                    <span class="sidebar-text">{{ module.display_name }}</span>
-                    <span class="tooltip-text">{{ module.display_name }}</span>
-                </a>
-                {% endfor %}
+            <div class="sidebar-header">
+                <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+                    <span class="toggle-icon">«</span>
+                </button>
+            </div>
+            <div class="sidebar-content">
+                <div class="sidebar-section">
+                    <a href="{{ url_for('home') }}" class="sidebar-item home-btn">
+                        <span class="sidebar-icon">🏠</span>
+                        <span class="sidebar-text">Dashboard</span>
+                        <span class="tooltip-text">Dashboard</span>
+                    </a>
+                    <div class="sidebar-title">Modules</div>
+                    {% for module in modules %}
+                    <a href="{{ url_for('module_page', module_name=module.name) }}"
+                        class="sidebar-item {% if module.active %}active{% endif %}">
+                        <span class="sidebar-icon">
+                            {% if 'amazon' in module.name.lower() %}📦
+                            {% elif 'flipkart' in module.name.lower() %}🛒
+                            {% elif 'leakage' in module.name.lower() %}🔍
+                            {% elif 'reconciliation' in module.name.lower() %}🔄
+                            {% elif 'stock' in module.name.lower() %}📈
+                            {% else %}📁{% endif %}
+                        </span>
+                        <span class="sidebar-text">{{ module.display_name }}</span>
+                        <span class="tooltip-text">{{ module.display_name }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
             </div>
         </aside>
 
