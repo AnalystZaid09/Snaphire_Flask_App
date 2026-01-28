@@ -6,9 +6,18 @@ import io
 import calendar
 
 import base64
-from common.mongo import save_reconciliation_report
 from datetime import datetime as dt
-from common.ui_utils import apply_professional_style, render_header
+from common.mongo import save_reconciliation_report
+from common.ui_utils import (
+    apply_professional_style, 
+    render_header, 
+    download_module_report,
+    auto_save_generated_reports
+)
+
+# Module name for MongoDB collection
+MODULE_NAME = "amazon"
+TOOL_NAME = "amazon_month_qtr_wise"
 
 st.set_page_config(page_title="Month and Quarter Wise Sales Data Analysis", layout="wide", initial_sidebar_state="expanded")
 apply_professional_style()
@@ -152,8 +161,18 @@ if zip_files and pm_file:
     
     # Save to MongoDB
     try:
+        # Auto-save for general tracking
+        auto_save_generated_reports(
+            reports={
+                "Amazon Month/Quarter Analysis": processed_df
+            },
+            module_name=MODULE_NAME,
+            tool_name=TOOL_NAME
+        )
+        
+        # Also keep reconciliation specific dump but in 'amazon' collection
         save_reconciliation_report(
-            collection_name="amazon_month_qtr_wise",
+            collection_name=MODULE_NAME,
             invoice_no=f"MON_QTR_{dt.now().strftime('%Y%m%d_%H%M%S')}",
             summary_data={
                 "filtered_count": filtered_count,
@@ -162,7 +181,10 @@ if zip_files and pm_file:
                 "total_invoice_amount": float(processed_df["Invoice Amount"].sum()) if "Invoice Amount" in processed_df.columns else 0
             },
             line_items_data=processed_df,
-            metadata={"report_type": "amazon_month_qtr_wise"}
+            metadata={
+                "report_type": "amazon_month_qtr_wise",
+                "tool_name": TOOL_NAME
+            }
         )
     except Exception:
         pass

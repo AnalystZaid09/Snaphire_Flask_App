@@ -7,11 +7,13 @@ from common.ui_utils import (
     apply_professional_style, 
     get_download_filename, 
     render_header,
-    download_module_report
+    download_module_report,
+    auto_save_generated_reports
 )
 
 # Module name for MongoDB collection
 MODULE_NAME = "amazon"
+TOOL_NAME = "amazon_qwtt_stock"
 
 st.set_page_config(page_title="QWTT Reports", layout="wide")
 apply_professional_style()
@@ -133,6 +135,16 @@ if inventory_file and pm_file and sales_file and generate_button:
         with st.spinner("Generating reports..."):
             inv_report, sales_report = process_data(inventory_df, pm_df, sales_df)
         
+        # Auto-save reports
+        auto_save_generated_reports(
+            reports={
+                "QWTT Inventory Report": inv_report,
+                "QWTT Sales Report": sales_report
+            },
+            module_name=MODULE_NAME,
+            tool_name=TOOL_NAME
+        )
+        
         st.success("✅ Reports generated successfully!")
         
         # Create tabs
@@ -166,7 +178,8 @@ if inventory_file and pm_file and sales_file and generate_button:
                 module_name=MODULE_NAME,
                 report_name="QWTT Inventory Report",
                 button_label="📥 Download Inventory Report",
-                key="dl_qwtt_inventory"
+                key="dl_qwtt_inventory",
+                tool_name=TOOL_NAME
             )
         
         with tab2:
@@ -198,7 +211,8 @@ if inventory_file and pm_file and sales_file and generate_button:
                 module_name=MODULE_NAME,
                 report_name="QWTT Sales Report",
                 button_label="📥 Download Sales Report",
-                key="dl_qwtt_sales"
+                key="dl_qwtt_sales",
+                tool_name=TOOL_NAME
             )
             
     except Exception as e:

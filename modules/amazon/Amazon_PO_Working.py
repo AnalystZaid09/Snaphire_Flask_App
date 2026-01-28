@@ -14,10 +14,14 @@ st.set_page_config(
 
 from common.ui_utils import (
     apply_professional_style, 
-    save_module_reports_on_generate, 
+    auto_save_generated_reports, 
     download_module_report,
     render_header
 )
+
+# Module name for MongoDB collection
+MODULE_NAME = "amazon"
+TOOL_NAME = "amazon_po"
 
 # Apply professional styling
 apply_professional_style()
@@ -419,11 +423,12 @@ if process_button:
                 st.session_state.processed = True
                 
                 # Auto-save reports to MongoDB
-                save_module_reports_on_generate(
+                auto_save_generated_reports(
                     reports={
                         "Amazon PO Working Analysis": business_pivot
                     },
-                    module_name="amazon"
+                    module_name=MODULE_NAME,
+                    tool_name=TOOL_NAME
                 )
                 
                 st.success("✅ Data processed successfully!")
@@ -500,10 +505,11 @@ if st.session_state.processed and st.session_state.business_pivot is not None:
         with col2:
             download_module_report(
                 df=filtered_df,
-                module_name="amazon",
+                module_name=MODULE_NAME,
                 report_name="Amazon PO Working Analysis",
                 button_label="📥 Download All Products Report (Excel)",
-                key="dl_po_working_all"
+                key="dl_po_working_all",
+                tool_name=TOOL_NAME
             )
     
     with tab2:
@@ -538,10 +544,11 @@ if st.session_state.processed and st.session_state.business_pivot is not None:
             with col2:
                 download_module_report(
                     df=low_stock,
-                    module_name="amazon",
+                    module_name=MODULE_NAME,
                     report_name="Amazon PO Working - Low Stock Alert",
                     button_label="📥 Download Low Stock Report (Excel)",
-                    key="dl_po_working_low"
+                    key="dl_po_working_low",
+                    tool_name=TOOL_NAME
                 )
         else:
             st.success("✅ All products have adequate stock!")
@@ -588,10 +595,11 @@ if st.session_state.processed and st.session_state.business_pivot is not None:
         with col2:
             download_module_report(
                 df=ris_detailed,
-                module_name="amazon",
+                module_name=MODULE_NAME,
                 report_name="Amazon PO Working - RIS Analysis",
                 button_label="📥 Download RIS Analysis Report (Excel)",
-                key="dl_po_working_ris"
+                key="dl_po_working_ris",
+                tool_name=TOOL_NAME
             )
     
 else:

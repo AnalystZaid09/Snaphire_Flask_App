@@ -9,8 +9,18 @@ import traceback
 import tempfile
 import os
 
-from common.ui_utils import apply_professional_style, get_download_filename, render_header
+from common.ui_utils import (
+    apply_professional_style, 
+    get_download_filename, 
+    render_header,
+    download_module_report,
+    auto_save_generated_reports
+)
 from common.mongo import save_reconciliation_report
+
+# Module name for MongoDB collection
+MODULE_NAME = "amazon"
+TOOL_NAME = "amazon_sales_vs_return"
 
 # Page configuration
 st.set_page_config(
@@ -350,25 +360,17 @@ def convert_df_to_csv(df):
     return df.to_csv(index=False).encode('utf-8')
 
 def create_download_button(df, filename, button_text="📥 Download Excel", is_csv=False):
-    """Create a download button for dataframe with timestamped filename"""
+    """Create a download button for dataframe with standardized logging"""
     if df is None:
         return
 
-    if is_csv:
-        data = convert_df_to_csv(df)
-        mime = "text/csv"
-        timestamped_filename = get_download_filename(filename.replace('.csv', ''), 'csv')
-    else:
-        data = convert_df_to_excel(df)
-        mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        timestamped_filename = get_download_filename(filename.replace('.xlsx', ''))
-
-    st.download_button(
-        label=button_text,
-        data=data,
-        file_name=timestamped_filename,
-        mime=mime,
-        use_container_width=True
+    return download_module_report(
+        df=df,
+        module_name=MODULE_NAME,
+        report_name=filename.replace('.xlsx', '').replace('.csv', '').replace('_', ' ').title(),
+        button_label=button_text,
+        key=f"dl_{filename.replace('.', '_')}",
+        tool_name=TOOL_NAME
     )
 
 
@@ -618,8 +620,19 @@ if process_button:
                     
                     # Save to MongoDB
                     try:
+                        # Auto-save for general tracking
+                        auto_save_generated_reports(
+                            reports={
+                                "ASIN Final Summary": asin_final,
+                                "Brand Final Summary": brand_final
+                            },
+                            module_name=MODULE_NAME,
+                            tool_name=TOOL_NAME
+                        )
+                        
+                        # Also keep reconciliation specific dump but in 'amazon' collection
                         save_reconciliation_report(
-                            collection_name="sales_vs_return",
+                            collection_name=MODULE_NAME,
                             invoice_no=f"SALESVSRETURN_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}",
                             summary_data={
                                 "total_records": total_records,
@@ -629,7 +642,10 @@ if process_button:
                                 "total_sf_returns": total_sf_returns
                             },
                             line_items_data=asin_final,
-                            metadata={"report_type": "sales_vs_return"}
+                            metadata={
+                                "report_type": "sales_vs_return",
+                                "tool_name": TOOL_NAME
+                            }
                         )
                     except Exception as e:
                         pass

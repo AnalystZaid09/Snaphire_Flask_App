@@ -7,10 +7,13 @@ from common.ui_utils import (
     apply_professional_style, 
     get_download_filename, 
     render_header,
-    download_module_report
+    download_module_report,
+    auto_save_generated_reports
 )
 
+# Module name for MongoDB collection
 MODULE_NAME = "amazon"
+TOOL_NAME = "amazon_monthly_pl"
 
 # Page configuration is handled by the main app
 apply_professional_style()
@@ -301,6 +304,16 @@ if transaction_file and pm_file and ncemi_file and dyson_file:
             with st.spinner('Processing data...'):
                 result_df = process_data(transaction_file, pm_file, ncemi_file, dyson_file)
                 st.session_state['result_df'] = result_df
+                
+                # Auto-save reports
+                auto_save_generated_reports(
+                    reports={
+                        "Monthly PL Analysis": result_df
+                    },
+                    module_name=MODULE_NAME,
+                    tool_name=TOOL_NAME
+                )
+                
                 st.success(f"✅ Data processed successfully! Total records: {len(result_df)}")
         except Exception as e:
             st.error(f"❌ Error processing data: {str(e)}")
@@ -365,7 +378,8 @@ if transaction_file and pm_file and ncemi_file and dyson_file:
             module_name=MODULE_NAME,
             report_name="Monthly PL Analysis",
             button_label="📥 Download Excel",
-            key="dl_monthly_pl"
+            key="dl_monthly_pl",
+            tool_name=TOOL_NAME
         )
 
 else:
