@@ -6,7 +6,8 @@ from common.ui_utils import (
     apply_professional_style, 
     get_download_filename, 
     render_header,
-    download_module_report
+    download_module_report,
+    auto_save_generated_reports
 )
 
 # Module name for MongoDB collection
