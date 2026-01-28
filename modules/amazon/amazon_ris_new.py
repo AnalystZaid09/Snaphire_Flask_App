@@ -1,8 +1,15 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
 import re
 from io import BytesIO
+from common.ui_utils import (
+    apply_professional_style, 
+    render_header,
+    download_module_report,
+    auto_save_generated_reports
+)
+
+# Module name for MongoDB collection
+MODULE_NAME = "amazon"
+TOOL_NAME = "amazon_ris"
 
 # Page configuration
 st.set_page_config(
@@ -11,6 +18,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+apply_professional_style()
 
 # Custom CSS
 st.markdown("""
@@ -34,6 +42,8 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
+
+render_header("RIS Analysis Dashboard")
 
 # Helper functions
 def clean_text(x):
@@ -88,9 +98,9 @@ STATE_RULES = {
     "Bihar": ["bihar", "br", "patna"],
 }
 
-# Title
-st.title("📊 RIS Analysis Dashboard")
-st.markdown("---")
+# Title - REMOVED since we use render_header
+# st.title("📊 RIS Analysis Dashboard")
+# st.markdown("---")
 
 # Initialize session state
 if 'processed_data' not in st.session_state:
@@ -368,6 +378,10 @@ with st.sidebar:
                         results['state_fc'] = state_fc
                         
                         st.session_state.all_results = results
+                        
+                        # Auto-save all generated reports to MongoDB
+                        auto_save_generated_reports(results, MODULE_NAME, tool_name=TOOL_NAME)
+                        
                         st.success("✅ Data processed successfully!")
                         
                     except Exception as e:
@@ -607,6 +621,10 @@ with st.sidebar:
                             manager_results['cluster_asin'] = cluster_asin_pivot
                         
                         st.session_state.manager_results = manager_results
+                        
+                        # Auto-save all generated reports to MongoDB
+                        auto_save_generated_reports(manager_results, MODULE_NAME, tool_name=TOOL_NAME)
+                        
                         st.success("✅ Manager data processed successfully!")
                         
                     except Exception as e:
@@ -647,11 +665,13 @@ if st.session_state.processed_data is not None:
         st.markdown("---")
         st.dataframe(df, use_container_width=True, height=400)
         
-        st.download_button(
-            label="📥 Download Processed Data (Excel)",
-            data=to_excel(df),
-            file_name="processed_ris_data.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        download_module_report(
+            df=df,
+            module_name=MODULE_NAME,
+            report_name="Processed RIS Data",
+            button_label="📥 Download Processed Data (Excel)",
+            key="dl_processed_ris",
+            tool_name=TOOL_NAME
         )
     
     # Tab 2: Brand-wise RIS
@@ -660,11 +680,13 @@ if st.session_state.processed_data is not None:
         if 'brand_wise' in st.session_state.all_results:
             df = st.session_state.all_results['brand_wise']
             st.dataframe(df, use_container_width=True, height=400)
-            st.download_button(
-                label="📥 Download Brand-wise Analysis (Excel)",
-                data=to_excel(df),
-                file_name="brand_wise_ris.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            download_module_report(
+                df=df,
+                module_name=MODULE_NAME,
+                report_name="Brand-wise RIS Analysis",
+                button_label="📥 Download Brand-wise Analysis (Excel)",
+                key="dl_brand_wise_ris",
+                tool_name=TOOL_NAME
             )
     
     # Tab 3: ASIN-wise RIS
@@ -673,11 +695,13 @@ if st.session_state.processed_data is not None:
         if 'asin_wise' in st.session_state.all_results:
             df = st.session_state.all_results['asin_wise']
             st.dataframe(df, use_container_width=True, height=400)
-            st.download_button(
-                label="📥 Download ASIN-wise Analysis (Excel)",
-                data=to_excel(df),
-                file_name="asin_wise_ris.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            download_module_report(
+                df=df,
+                module_name=MODULE_NAME,
+                report_name="ASIN-wise RIS Analysis",
+                button_label="📥 Download ASIN-wise Analysis (Excel)",
+                key="dl_asin_wise_ris",
+                tool_name=TOOL_NAME
             )
     
     # Tab 4: Cluster-wise RIS
@@ -686,11 +710,13 @@ if st.session_state.processed_data is not None:
         if 'cluster_wise' in st.session_state.all_results:
             df = st.session_state.all_results['cluster_wise']
             st.dataframe(df, use_container_width=True, height=400)
-            st.download_button(
-                label="📥 Download Cluster-wise Analysis (Excel)",
-                data=to_excel(df),
-                file_name="cluster_wise_ris.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            download_module_report(
+                df=df,
+                module_name=MODULE_NAME,
+                report_name="Cluster-wise RIS Analysis",
+                button_label="📥 Download Cluster-wise Analysis (Excel)",
+                key="dl_cluster_wise_ris",
+                tool_name=TOOL_NAME
             )
     
     # Tab 5: Cluster-Brand Analysis
@@ -699,11 +725,13 @@ if st.session_state.processed_data is not None:
         if 'cluster_brand' in st.session_state.all_results:
             df = st.session_state.all_results['cluster_brand']
             st.dataframe(df, use_container_width=True, height=400)
-            st.download_button(
-                label="📥 Download Cluster-Brand Analysis (Excel)",
-                data=to_excel(df),
-                file_name="cluster_brand_ris.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            download_module_report(
+                df=df,
+                module_name=MODULE_NAME,
+                report_name="Cluster-Brand RIS Analysis",
+                button_label="📥 Download Cluster-Brand Analysis (Excel)",
+                key="dl_cluster_brand_ris",
+                tool_name=TOOL_NAME
             )
     
     # Tab 6: State Cluster Analysis
@@ -712,11 +740,13 @@ if st.session_state.processed_data is not None:
         if 'state_cluster' in st.session_state.all_results:
             df = st.session_state.all_results['state_cluster']
             st.dataframe(df, use_container_width=True, height=400)
-            st.download_button(
-                label="📥 Download State Cluster Analysis (Excel)",
-                data=to_excel(df),
-                file_name="state_cluster_ris.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            download_module_report(
+                df=df,
+                module_name=MODULE_NAME,
+                report_name="State Cluster RIS Analysis",
+                button_label="📥 Download State Cluster Analysis (Excel)",
+                key="dl_state_cluster_ris",
+                tool_name=TOOL_NAME
             )
     
     # Tab 7: State-FC Analysis
@@ -725,11 +755,13 @@ if st.session_state.processed_data is not None:
         if 'state_fc' in st.session_state.all_results:
             df = st.session_state.all_results['state_fc']
             st.dataframe(df, use_container_width=True, height=400)
-            st.download_button(
-                label="📥 Download State-FC Analysis (Excel)",
-                data=to_excel(df),
-                file_name="state_fc_ris.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            download_module_report(
+                df=df,
+                module_name=MODULE_NAME,
+                report_name="State-FC RIS Analysis",
+                button_label="📥 Download State-FC Analysis (Excel)",
+                key="dl_state_fc_ris",
+                tool_name=TOOL_NAME
             )
 
 

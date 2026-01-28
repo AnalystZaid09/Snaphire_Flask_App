@@ -1,19 +1,23 @@
-# Daliy P&L
 import streamlit as st
 import pandas as pd
 import numpy as np
 import io
 import os
 import xlsxwriter
-
-st.set_page_config(page_title="Amazon Daily-P&L", page_icon="📊", layout="wide")
-
-st.title("Amazon Daily-P&L")
-st.markdown(
-    "Upload your Amazon transaction CSV and Purchase Master (PM) Excel file to analyze profits. "
-    "This build removes all datetime parsing — every date column is treated as plain text. "
-    "Styled Excel export preserves SKU formatting and exports the currently filtered view."
+from common.ui_utils import (
+    apply_professional_style, 
+    render_header,
+    download_module_report,
+    auto_save_generated_reports
 )
+
+# Module name for MongoDB collection
+MODULE_NAME = "amazon"
+TOOL_NAME = "amazon_dailypl"
+
+st.set_page_config(page_title="Amazon Daily-P&L", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
+apply_professional_style()
+render_header("Amazon Daily-P&L")
 
 # ----------------- Helpers -----------------
 
@@ -420,7 +424,21 @@ if transaction_file and pm_file:
         st.dataframe(filtered, use_container_width=True, height=400)
 
         csv_bytes = filtered.to_csv(index=False).encode('utf-8')
-        st.download_button("Download Filtered CSV", data=csv_bytes, file_name=f"{os.path.splitext(orig_name)[0]}_filtered.csv", mime='text/csv')
+        
+        # Auto-save all generated reports to MongoDB
+        all_reports = {
+            "Daily PL Analysis": filtered
+        }
+        auto_save_generated_reports(all_reports, MODULE_NAME, tool_name=TOOL_NAME)
+
+        download_module_report(
+            df=filtered,
+            module_name=MODULE_NAME,
+            report_name="Daily PL Analysis",
+            button_label="Download Filtered CSV",
+            key="dl_daily_pl_csv",
+            tool_name=TOOL_NAME
+        )
 
         # ---------- Styled Excel builder (exports FILTERED dataframe) ----------
         def _xl_col_letter(n):
@@ -645,11 +663,14 @@ if transaction_file and pm_file:
             if st.button("Create styled Excel for filtered data (multi-sheet, formatted)"):
                 try:
                     bytes_xlsx = create_styled_workbook_bytes(filtered, header_hex="#0B5394", currency_symbol='₹')
-                    st.download_button(
-                        label="📥 Download Styled Excel (.xlsx) — filtered",
-                        data=bytes_xlsx,
-                        file_name="amazon_profit_analysis_filtered_styled.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    
+                    download_module_report(
+                        df=filtered,
+                        module_name=MODULE_NAME,
+                        report_name="Daily PL Analysis (Styled)",
+                        button_label="📥 Download Styled Excel (.xlsx) — filtered",
+                        key="dl_daily_pl_styled",
+                        tool_name=TOOL_NAME
                     )
                     st.success("Styled Excel ready — click the download button above.")
                 except Exception as e:

@@ -23,7 +23,8 @@ def start_streamlit():
          "--server.port=8501", 
          "--server.headless=true",
          "--server.enableXsrfProtection=false",
-         "--server.enableCORS=false"],
+         "--server.enableCORS=false",
+         "--server.maxUploadSize=2000"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )

@@ -8,8 +8,20 @@ from io import BytesIO
 st.set_page_config(
     page_title="Amazon PO Working Analysis",
     page_icon="📦",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
+
+from common.ui_utils import (
+    apply_professional_style, 
+    save_module_reports_on_generate, 
+    download_module_report,
+    render_header
+)
+
+# Apply professional styling
+apply_professional_style()
+
 
 # Custom CSS
 st.markdown("""
@@ -23,9 +35,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Title
-st.title("📦 Amazon Po Working Analysis Dashboard")
-st.markdown("Upload your files and analyze inventory, sales, and RIS data")
+# Header
+render_header("📦 Amazon Po Working Analysis Dashboard", "Upload your files and analyze inventory, sales, and RIS data")
+
 st.divider()
 
 # Initialize session state
@@ -406,6 +418,14 @@ if process_button:
                 st.session_state.business_pivot = business_pivot
                 st.session_state.processed = True
                 
+                # Auto-save reports to MongoDB
+                save_module_reports_on_generate(
+                    reports={
+                        "Amazon PO Working Analysis": business_pivot
+                    },
+                    module_name="amazon"
+                )
+                
                 st.success("✅ Data processed successfully!")
                 st.rerun()
                 
@@ -478,18 +498,12 @@ if st.session_state.processed and st.session_state.business_pivot is not None:
         st.divider()
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            all_products_output = BytesIO()
-            with pd.ExcelWriter(all_products_output, engine='openpyxl') as writer:
-                filtered_df.to_excel(writer, sheet_name='All Products', index=False)
-            all_products_output.seek(0)
-            
-            st.download_button(
-                label="📥 Download All Products Report (Excel)",
-                data=all_products_output,
-                file_name=f"all_products_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                type="primary",
-                use_container_width=True
+            download_module_report(
+                df=filtered_df,
+                module_name="amazon",
+                report_name="Amazon PO Working Analysis",
+                button_label="📥 Download All Products Report (Excel)",
+                key="dl_po_working_all"
             )
     
     with tab2:
@@ -522,20 +536,12 @@ if st.session_state.processed and st.session_state.business_pivot is not None:
             st.divider()
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                low_stock_output = BytesIO()
-                with pd.ExcelWriter(low_stock_output, engine='openpyxl') as writer:
-                    low_stock.to_excel(writer, sheet_name='Low Stock Items', index=False)
-                    if len(critical) > 0:
-                        critical.to_excel(writer, sheet_name='Zero Stock Critical', index=False)
-                low_stock_output.seek(0)
-                
-                st.download_button(
-                    label="📥 Download Low Stock Report (Excel)",
-                    data=low_stock_output,
-                    file_name=f"low_stock_report_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    type="primary",
-                    use_container_width=True
+                download_module_report(
+                    df=low_stock,
+                    module_name="amazon",
+                    report_name="Amazon PO Working - Low Stock Alert",
+                    button_label="📥 Download Low Stock Report (Excel)",
+                    key="dl_po_working_low"
                 )
         else:
             st.success("✅ All products have adequate stock!")
@@ -580,33 +586,12 @@ if st.session_state.processed and st.session_state.business_pivot is not None:
         st.divider()
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            ris_output = BytesIO()
-            with pd.ExcelWriter(ris_output, engine='openpyxl') as writer:
-                ris_detailed.to_excel(writer, sheet_name='RIS Detailed', index=False)
-                
-                ris_cluster_summary = df.groupby("RIS Cluster").agg({
-                    "RIS Qty": "sum",
-                    "(Child) ASIN": "count"
-                }).reset_index()
-                ris_cluster_summary.columns = ["Cluster", "Total RIS Qty", "Product Count"]
-                ris_cluster_summary.to_excel(writer, sheet_name='RIS Cluster Summary', index=False)
-                
-                if "RIS State" in df.columns and df["RIS State"].any():
-                    state_summary_export = df.groupby("RIS State").agg({
-                        "RIS Qty": "sum",
-                        "(Child) ASIN": "count"
-                    }).reset_index()
-                    state_summary_export.columns = ["State", "Total RIS Qty", "Product Count"]
-                    state_summary_export.to_excel(writer, sheet_name='RIS State Summary', index=False)
-            ris_output.seek(0)
-            
-            st.download_button(
-                label="📥 Download RIS Analysis Report (Excel)",
-                data=ris_output,
-                file_name=f"ris_analysis_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                type="primary",
-                use_container_width=True
+            download_module_report(
+                df=ris_detailed,
+                module_name="amazon",
+                report_name="Amazon PO Working - RIS Analysis",
+                button_label="📥 Download RIS Analysis Report (Excel)",
+                key="dl_po_working_ris"
             )
     
 else:

@@ -11,6 +11,7 @@ from common.ui_utils import (
 
 # Module name for MongoDB collection
 MODULE_NAME = "amazon"
+TOOL_NAME = "amazon_oos_daywise"
 
 st.set_page_config(page_title="Amazon OOS Daywise Analysis", layout="wide")
 apply_professional_style()
@@ -174,9 +175,14 @@ if process_data and all([max_days_file, min_days_file, inventory_file, pm_file])
             sales_report = create_sales_report(day_max, day_min, PM, Inventory, max_days, min_days)
             inventory_report = create_inventory_report(Inventory, PM, sales_report, max_days, min_days)
             
-            st.session_state['sales_report'] = sales_report
-            st.session_state['inventory_report'] = inventory_report
             st.session_state['processed'] = True
+            
+            # Auto-save all generated reports to MongoDB
+            all_reports = {
+                "OOS Daywise Sales Report": sales_report,
+                "OOS Daywise Inventory Report": inventory_report
+            }
+            auto_save_generated_reports(all_reports, MODULE_NAME, tool_name=TOOL_NAME)
             
             st.success('✅ Data processed successfully!')
             
@@ -213,7 +219,8 @@ if st.session_state.get('processed', False):
             module_name=MODULE_NAME,
             report_name="OOS Daywise Sales Report",
             button_label="📥 Download Sales Report",
-            key="dl_oos_sales"
+            key="dl_oos_sales",
+            tool_name=TOOL_NAME
         )
     
     with tab2:
@@ -237,7 +244,8 @@ if st.session_state.get('processed', False):
             module_name=MODULE_NAME,
             report_name="OOS Daywise Inventory Report",
             button_label="📥 Download Inventory Report",
-            key="dl_oos_inventory"
+            key="dl_oos_inventory",
+            tool_name=TOOL_NAME
         )
 else:
     st.info("👆 Upload all required files and click 'Process Data' to generate reports.")
