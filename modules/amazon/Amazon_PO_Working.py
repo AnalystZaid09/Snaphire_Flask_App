@@ -123,6 +123,7 @@ with st.sidebar:
         
         # State FC File not needed for Manager
         state_fc_file = None
+        manager_name = st.text_input("Manager Name", value="General Manager", key="m_manager_name")
     
     st.divider()
     
@@ -422,10 +423,14 @@ if process_button:
                 st.session_state.business_pivot = business_pivot
                 st.session_state.processed = True
                 
+                # Prepare report name with role prefix
+                report_prefix = f"Manager - {manager_name} - " if role == "Manager" else "Portal - "
+                report_title = f"{report_prefix}Amazon PO Working Analysis"
+
                 # Auto-save reports to MongoDB
                 auto_save_generated_reports(
                     reports={
-                        "Amazon PO Working Analysis": business_pivot
+                        report_title: business_pivot
                     },
                     module_name=MODULE_NAME,
                     tool_name=TOOL_NAME
@@ -503,10 +508,14 @@ if st.session_state.processed and st.session_state.business_pivot is not None:
         st.divider()
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
+            # Prepare report name with role prefix for display/download
+            current_manager = st.session_state.get('m_manager_name', '') if role == "Manager" else ""
+            report_prefix = f"Manager - {current_manager} - " if role == "Manager" else "Portal - "
+            
             download_module_report(
                 df=filtered_df,
                 module_name=MODULE_NAME,
-                report_name="Amazon PO Working Analysis",
+                report_name=f"{report_prefix}Amazon PO Working Analysis",
                 button_label="📥 Download All Products Report (Excel)",
                 key="dl_po_working_all",
                 tool_name=TOOL_NAME
@@ -545,7 +554,7 @@ if st.session_state.processed and st.session_state.business_pivot is not None:
                 download_module_report(
                     df=low_stock,
                     module_name=MODULE_NAME,
-                    report_name="Amazon PO Working - Low Stock Alert",
+                    report_name=f"{report_prefix}Amazon PO Working - Low Stock Alert",
                     button_label="📥 Download Low Stock Report (Excel)",
                     key="dl_po_working_low",
                     tool_name=TOOL_NAME
@@ -596,7 +605,7 @@ if st.session_state.processed and st.session_state.business_pivot is not None:
             download_module_report(
                 df=ris_detailed,
                 module_name=MODULE_NAME,
-                report_name="Amazon PO Working - RIS Analysis",
+                report_name=f"{report_prefix}Amazon PO Working - RIS Analysis",
                 button_label="📥 Download RIS Analysis Report (Excel)",
                 key="dl_po_working_ris",
                 tool_name=TOOL_NAME
