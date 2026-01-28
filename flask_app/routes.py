@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+app.config['MAX_CONTENT_LENGTH'] = 2000 * 1024 * 1024 # 2000MB limit for Render
 
 # Module configuration
 MODULES_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "modules")
