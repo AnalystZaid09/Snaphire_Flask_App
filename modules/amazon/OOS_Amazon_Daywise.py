@@ -177,6 +177,8 @@ if process_data and all([max_days_file, min_days_file, inventory_file, pm_file])
             inventory_report = create_inventory_report(Inventory, PM, sales_report, max_days, min_days)
             
             st.session_state['processed'] = True
+            st.session_state['sales_report'] = sales_report
+            st.session_state['inventory_report'] = inventory_report
             
             # Auto-save all generated reports to MongoDB
             all_reports = {
