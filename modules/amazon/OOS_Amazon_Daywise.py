@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import gc
 
 from common.ui_utils import (
     apply_professional_style, 
@@ -56,8 +57,20 @@ def normalize_dataframe(df):
     return df
 
 def load_and_clean_sales_data(file, price_col='item-price'):
-    """Load and clean sales data"""
-    df = pd.read_excel(file)
+    """Load and clean sales data with memory optimization"""
+    # Only load required columns to save memory
+    required_cols = ['asin', 'ASIN', 'quantity', 'Quantity', 'product-name', 'Product Name', 'item-price', 'Item Price', 'order-status', 'Order Status']
+    
+    try:
+        # Try to read only the columns we need
+        df = pd.read_excel(file)
+        # Immediately filter to keep only columns we might use
+        available_cols = [c for c in df.columns if any(req.lower() == c.lower() for req in required_cols)]
+        df = df[available_cols].copy()
+    except Exception as e:
+        # Fallback to full load if selective fails
+        df = pd.read_excel(file)
+    
     df = normalize_dataframe(df)
     
     actual_price_col = 'item-price' if 'item-price' in df.columns else price_col
@@ -170,11 +183,27 @@ if process_data and all([max_days_file, min_days_file, inventory_file, pm_file])
         try:
             day_max = load_and_clean_sales_data(max_days_file)
             day_min = load_and_clean_sales_data(min_days_file)
+            
+            # For Inventory and PM, load only necessary columns by index or name
             Inventory = pd.read_excel(inventory_file)
+            # Normalize and keep only what we need
+            Inventory = normalize_dataframe(Inventory)
+            inv_cols = ['asin', 'sku', 'product-name', 'afn-fulfillable-quantity', 'afn-reserved-quantity']
+            available_inv = [c for c in Inventory.columns if c in inv_cols]
+            Inventory = Inventory[available_inv].copy()
+            
             PM = pd.read_excel(pm_file)
+            # Keep only necessary columns for PM (indices used in existing logic: 0, 1, 4, 6, 7, 9)
+            if len(PM.columns) > 9:
+                PM = PM.iloc[:, [0, 1, 4, 6, 7, 9]].copy()
+            
+            gc.collect() # Clean up Excel buffers
             
             sales_report = create_sales_report(day_max, day_min, PM, Inventory, max_days, min_days)
+            gc.collect()
+            
             inventory_report = create_inventory_report(Inventory, PM, sales_report, max_days, min_days)
+            gc.collect()
             
             st.session_state['processed'] = True
             st.session_state['sales_report'] = sales_report
