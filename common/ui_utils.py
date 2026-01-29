@@ -423,7 +423,8 @@ def _get_saved_reports_key(module_name: str) -> str:
 
 
 def auto_save_generated_reports(reports: Dict[str, pd.DataFrame], module_name: str,
-                                 show_toast: bool = True, tool_name: str = None) -> int:
+                                 show_toast: bool = True, tool_name: str = None,
+                                 metadata: dict = None) -> int:
     """
     AUTO-SAVE all generated reports to MongoDB immediately when called.
     
@@ -432,6 +433,7 @@ def auto_save_generated_reports(reports: Dict[str, pd.DataFrame], module_name: s
         module_name: Module name (e.g., 'amazon')
         show_toast: Whether to show success toast
         tool_name: Tool name (auto-detected if not provided)
+        metadata: Optional additional metadata
     """
     if not is_mongo_available() or not save_report_with_tracking:
         logger.warning("MongoDB not available for auto-save")

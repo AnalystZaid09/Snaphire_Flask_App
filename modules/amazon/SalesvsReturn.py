@@ -10,11 +10,10 @@ import tempfile
 import os
 
 from common.ui_utils import (
-    apply_professional_style, 
-    get_download_filename, 
     render_header,
     download_module_report,
-    auto_save_generated_reports
+    auto_save_generated_reports,
+    apply_professional_style
 )
 from common.mongo import save_reconciliation_report
 
@@ -108,9 +107,27 @@ def read_zip_files_to_disk(zip_files):
                             del df
                             gc.collect()
         except Exception as e:
-            st.warning(f"Could not read zip file {zip_file.name}: {str(e)}")
+            st.warning(f"Could not read zip file: {str(e)}")
             
     return temp_path, total_count
+
+def ensure_arrow_compatibility(df):
+    """Ensure dataframe is Arrow-compatible by fixing column types"""
+    if df is None or df.empty:
+        return df
+    
+    # Force object columns to strings if they cause Arrow errors
+    # "Vendor SKU Codes" is known to cause issues when mixed types exist
+    problematic_cols = ["Vendor SKU Codes", "SKU", "Sku", "Asin", "ASIN"]
+    for col in problematic_cols:
+        if col in df.columns:
+            df[col] = df[col].astype(str)
+            
+    # Also handle other object columns that might have mixed types
+    for col in df.select_dtypes(include=['object']).columns:
+        df[col] = df[col].astype(str)
+        
+    return df
 
 def add_grand_total(df):
     """Add a Grand Total row to the dataframe for numeric columns"""
@@ -469,9 +486,9 @@ if process_button:
                         first_chunk = pd.read_csv(temp_csv_path, nrows=1)
                         actual_cols = first_chunk.columns.tolist()
                         available_essentials = [c for c in essential_cols if c in actual_cols]
-                        combined_df = pd.read_csv(temp_csv_path, usecols=available_essentials)
+                        combined_df = pd.read_csv(temp_csv_path, usecols=available_essentials, low_memory=False)
                     except Exception:
-                        combined_df = pd.read_csv(temp_csv_path)
+                        combined_df = pd.read_csv(temp_csv_path, low_memory=False)
 
                     # Process combined data
                     progress_text.text("⚙️ Filtering and cleaning shipment data...")
@@ -588,6 +605,18 @@ if process_button:
                         fba_return_asin = add_grand_total(fba_return_asin)
                     if fba_disposition_pivot is not None:
                         fba_disposition_pivot = add_grand_total(fba_disposition_pivot)
+
+                    # Ensure Arrow compatibility for all tables displayed in UI
+                    combined_df = ensure_arrow_compatibility(combined_df)
+                    brand_qty_pivot = ensure_arrow_compatibility(brand_qty_pivot)
+                    asin_qty_pivot = ensure_arrow_compatibility(asin_qty_pivot)
+                    brand_final = ensure_arrow_compatibility(brand_final)
+                    asin_final = ensure_arrow_compatibility(asin_final)
+                    
+                    if seller_flex_df is not None:
+                        seller_flex_df = ensure_arrow_compatibility(seller_flex_df)
+                    if fba_return_df is not None:
+                        fba_return_df = ensure_arrow_compatibility(fba_return_df)
 
                     gc.collect()
 
