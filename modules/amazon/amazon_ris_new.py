@@ -220,21 +220,22 @@ with st.sidebar:
                             values="Shipped Quantity", aggfunc="sum", fill_value=0
                         ).reset_index()
                         # Ensure columns exist
-                        if "RIS" in brand_wise.columns:
+                        if "RIS" not in brand_wise.columns:
                             brand_wise["RIS"] = 0
-                        if "Non RIS" in brand_wise.columns:
+                        if "Non RIS" not in brand_wise.columns:
                             brand_wise["Non RIS"] = 0
                         brand_wise["Grand Total"] = brand_wise["RIS"] + brand_wise["Non RIS"]
-                        brand_wise["RIS %"] = ((brand_wise["RIS"] / brand_wise["Grand Total"]) * 100).round(2)
-                        brand_wise["Non RIS %"] = ((brand_wise["Non RIS"] / brand_wise["Grand Total"]) * 100).round(2)
+                        brand_wise["RIS %"] = ((brand_wise["RIS"] / brand_wise["Grand Total"].replace(0, 1)) * 100).round(2).fillna(0)
+                        brand_wise["Non RIS %"] = ((brand_wise["Non RIS"] / brand_wise["Grand Total"].replace(0, 1)) * 100).round(2).fillna(0)
                         # Add Grand Total row
+                        total_sum = brand_wise["Grand Total"].sum()
                         grand_total_row = pd.DataFrame({
                             "Brand": ["Grand Total"],
                             "RIS": [brand_wise["RIS"].sum()],
                             "Non RIS": [brand_wise["Non RIS"].sum()],
-                            "Grand Total": [brand_wise["Grand Total"].sum()],
-                            "RIS %": [round((brand_wise["RIS"].sum() / brand_wise["Grand Total"].sum()) * 100, 2)],
-                            "Non RIS %": [round((brand_wise["Non RIS"].sum() / brand_wise["Grand Total"].sum()) * 100, 2)]
+                            "Grand Total": [total_sum],
+                            "RIS %": [round((brand_wise["RIS"].sum() / max(total_sum, 1)) * 100, 2)],
+                            "Non RIS %": [round((brand_wise["Non RIS"].sum() / max(total_sum, 1)) * 100, 2)]
                         })
                         brand_wise = pd.concat([brand_wise, grand_total_row], ignore_index=True)
                         results['brand_wise'] = brand_wise

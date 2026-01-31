@@ -481,8 +481,7 @@ def auto_save_generated_reports(reports: Dict[str, pd.DataFrame], module_name: s
                 filename=filename,
                 metadata={
                     "auto_saved": True,
-                    "generated_at": datetime.now().isoformat(),
-                    **(metadata or {})
+                    "generated_at": datetime.now().isoformat()
                 }
             )
             
