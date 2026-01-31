@@ -10,26 +10,21 @@ echo "🚀 Starting Snaphire Unified Portal..."
 # 1. Configure Nginx with Railway's $PORT
 echo "🔧 Configuring Nginx to listen on port $PORT..."
 sed -i "s/\$PORT/$PORT/g" /etc/nginx/nginx.conf
+nginx -t
 
 # 2. Start Nginx directly in background (standalone)
 echo "🌐 Starting Nginx Proxy..."
 /usr/sbin/nginx -g "daemon on;"
-
-# Check if Nginx started
-if [ $? -eq 0 ]; then
-    echo "✅ Nginx started successfully"
-else
-    echo "❌ Nginx failed to start"
-fi
 
 # 3. Start Streamlit (Internal)
 echo "🎬 Starting Streamlit Engine on port $STREAMLIT_PORT..."
 export DOCKER_ENV=true
 export RENDER=true
 export RAILWAY_ENVIRONMENT=production
+# Bind to 0.0.0.0 for standard docker networking and log to stdout for Railway diagnostics
 python -m streamlit run streamlit_app.py \
     --server.port=$STREAMLIT_PORT \
-    --server.address=127.0.0.1 \
+    --server.address=0.0.0.0 \
     --server.headless=true \
     --server.enableXsrfProtection=false \
     --server.enableCORS=false \
@@ -37,7 +32,7 @@ python -m streamlit run streamlit_app.py \
     --server.maxUploadSize=2000 \
     --server.maxMessageSize=200 \
     --server.baseUrlPath="/st-engine" \
-    --browser.gatherUsageStats=false > streamlit.log 2>&1 &
+    --browser.gatherUsageStats=false &
 
 # 4. Wait for Streamlit to be ready
 echo "⏳ Waiting for Streamlit to start on port $STREAMLIT_PORT..."
@@ -47,7 +42,7 @@ import time
 import sys
 
 port = $STREAMLIT_PORT
-host = '127.0.0.1'
+host = '0.0.0.0'
 start_time = time.time()
 timeout = 30
 
@@ -59,15 +54,9 @@ while True:
     except (socket.timeout, ConnectionRefusedError, OSError):
         if time.time() - start_time > timeout:
             print(f'❌ Streamlit failed to start within {timeout}s')
-            # Print log for debugging
-            try:
-                with open('streamlit.log', 'r') as f:
-                    print('--- Streamlit Logs ---')
-                    print(f.read())
-            except: pass
             sys.exit(1)
         time.sleep(1)
-"
+" || exit 1
 
 # 5. Start Flask (Internal via Gunicorn)
 echo "🏗️ Starting Flask Portal on port $FLASK_PORT..."
