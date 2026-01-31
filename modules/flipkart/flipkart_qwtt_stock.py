@@ -8,7 +8,8 @@ from common.ui_utils import (
     apply_professional_style, 
     get_download_filename, 
     render_header,
-    download_module_report
+    download_module_report,
+    auto_save_generated_reports
 )
 
 MODULE_NAME = "flipkart"
@@ -72,13 +73,17 @@ def process_flipkart_data(sales_df, pm_df, inventory_df):
         .rename(columns={"Quantity": "Sales Qty"})
     )
     
-    # Create lookup dictionaries from PM file
-    fsn_map = pm_df.set_index("EasycomSKU")["FNS"].to_dict()
-    vendor_sku_map = pm_df.set_index("EasycomSKU")["Vendor SKU Codes"].to_dict()
-    brand_map = pm_df.set_index("EasycomSKU")["Brand"].to_dict()
-    manager_map = pm_df.set_index("EasycomSKU")["Brand Manager"].to_dict()
-    product_map = pm_df.set_index("EasycomSKU")["Product Name"].to_dict()
-    cp_map = pm_df.set_index("EasycomSKU")["CP"].to_dict()
+    # Create lookup dictionaries from PM file - Optimized: set index once
+    pm_lookup = pm_df.set_index("EasycomSKU")
+    fsn_map = pm_lookup["FNS"].to_dict()
+    vendor_sku_map = pm_lookup["Vendor SKU Codes"].to_dict()
+    brand_map = pm_lookup["Brand"].to_dict()
+    manager_map = pm_lookup["Brand Manager"].to_dict()
+    product_map = pm_lookup["Product Name"].to_dict()
+    cp_map = pm_lookup["CP"].to_dict()
+    
+    del pm_lookup
+    gc.collect()
     
     # Map data to sales pivot
     sales_pivot["FNS"] = sales_pivot["SKU"].map(fsn_map)
@@ -183,6 +188,15 @@ if sales_file and pm_file and inventory_file and generate_button:
             del pm_df
             del inventory_df
             gc.collect()
+
+        # Auto-save generated reports to MongoDB
+        auto_save_generated_reports(
+            reports={
+                "QWTT Sales Report": sales_report,
+                "QWTT Inventory Report": inventory_report
+            },
+            module_name=MODULE_NAME
+        )
         
         st.success("✅ Reports generated successfully!")
         
