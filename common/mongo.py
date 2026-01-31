@@ -255,13 +255,13 @@ def log_report_download(user_email: str, module: str, report_name: str, filename
         if df_data is not None:
             try:
                 if hasattr(df_data, 'to_dict'):
-                    # Limit to 10K rows to avoid document size issues
-                    if len(df_data) > 10000:
-                        report_data = df_data.head(10000).to_dict(orient='records')
+                    # Limit to 5K rows to avoid document size issues (BSON 16MB limit)
+                    if len(df_data) > 5000:
+                        report_data = df_data.head(5000).to_dict(orient='records')
                     else:
                         report_data = df_data.to_dict(orient='records')
                 elif isinstance(df_data, list):
-                    report_data = df_data[:10000] if len(df_data) > 10000 else df_data
+                    report_data = df_data[:5000] if len(df_data) > 5000 else df_data
             except Exception as e:
                 logger.warning(f"Could not serialize report data: {e}")
                 report_data = None
@@ -366,11 +366,11 @@ def save_module_report(module_name: str, report_name: str, df_data=None,
         if df_data is not None:
             if hasattr(df_data, 'to_dict'):
                 row_count = len(df_data)
-                # Cap at 10K rows for safety
-                report_data = df_data.head(10000).to_dict(orient='records')
+                # Cap at 5K rows for safety
+                report_data = df_data.head(5000).to_dict(orient='records')
             elif isinstance(df_data, list):
                 row_count = len(df_data)
-                report_data = df_data[:10000]
+                report_data = df_data[:5000]
         
         document = {
             "report_name": report_name,
@@ -410,7 +410,7 @@ def save_reconciliation_report(collection_name: str, invoice_no: str,
             "invoice_no": invoice_no,
             "generated_at": datetime.now(),
             "summary": summary,
-            "line_items": lines[:10000] if isinstance(lines, list) else lines, # Limit for size
+            "line_items": lines[:5000] if isinstance(lines, list) else lines, # Limit for size
             "metadata": metadata or {},
             "type": "reconciliation"
         }
@@ -623,11 +623,11 @@ def save_report_with_tracking(
             if hasattr(df_data, 'to_dict'):
                 row_count = len(df_data)
                 col_count = len(df_data.columns) if hasattr(df_data, 'columns') else 0
-                # Cap at 10K rows for MongoDB document size limit
-                report_data = df_data.head(10000).to_dict(orient='records')
+                # Cap at 5K rows for MongoDB document size limit
+                report_data = df_data.head(5000).to_dict(orient='records')
             elif isinstance(df_data, list):
                 row_count = len(df_data)
-                report_data = df_data[:10000]
+                report_data = df_data[:5000]
         
         # Create document for module collection
         document = {

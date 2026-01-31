@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import gc
 
 from common.ui_utils import (
     apply_professional_style, 
@@ -198,10 +199,15 @@ if process_data and all([max_days_file, min_days_file, inventory_file, pm_file])
             
             st.success('✅ Data processed successfully!')
             
+            # Aggressive cleanup
+            del day_max, day_min, Inventory, PM
+            gc.collect()
+            
         except Exception as e:
             st.error(f'❌ Error processing data: {str(e)}')
             st.session_state['processed'] = False
             st.exception(e)
+            gc.collect()
 
 elif process_data:
     st.warning('⚠️ Please upload all required files before processing.')
@@ -224,7 +230,7 @@ if st.session_state.get('processed', False):
         with col4:
             st.metric("Total Stock Value", f"₹{sales_df['Total Value'].sum():,.2f}")
         
-        st.dataframe(sales_df, use_container_width=True, height=500)
+        st.dataframe(sales_df, width="stretch", height=500)
         
         download_module_report(
             df=sales_df,
@@ -249,7 +255,7 @@ if st.session_state.get('processed', False):
         with col4:
             st.metric("Total Stock", f"{inventory_df['Total Stock'].sum():,.0f}")
         
-        st.dataframe(inventory_df, use_container_width=True, height=500)
+        st.dataframe(inventory_df, width="stretch", height=500)
         
         download_module_report(
             df=inventory_df,
