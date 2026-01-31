@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import gc
+import os
+import tempfile
 from io import BytesIO
 from datetime import datetime
 from common.ui_utils import (
@@ -57,122 +59,159 @@ def to_excel(df, sheet_name):
         df.to_excel(writer, sheet_name=sheet_name, index=False)
     return output.getvalue()
 
+def save_to_tmp(uploaded_file):
+    """Save an uploaded file to a temporary disk location to free up RAM"""
+    if uploaded_file is None:
+        return None
+    # Ensure uploaded file's buffer is at start
+    uploaded_file.seek(0)
+    fd, path = tempfile.mkstemp(suffix=os.path.splitext(uploaded_file.name)[1])
+    with os.fdopen(fd, 'wb') as tmp:
+        tmp.write(uploaded_file.getbuffer())
+    return path
+
 def process_flipkart_data(sales_file, pm_file, inventory_file, chunk_size=10000):
-    """Process Flipkart data using micro-vectorized chunking for absolute RAM safety"""
+    """Process Flipkart data using disk-backed loads and minimal column selection"""
     
-    # 1. Process Sales Report in Chunks (Vectorized)
-    sales_agg = {} # SKU -> Quantity
-    with st.spinner("Reading Sales data..."):
-        sales_file.seek(0)
-        chunks = pd.read_csv(
-            sales_file, 
-            usecols=["Marketplace", "SKU", "Quantity"],
-            dtype={"Marketplace": "str", "SKU": "str", "Quantity": "float32"},
-            chunksize=chunk_size
-        )
-        
-        for chunk in chunks:
-            # Filter only Flipkart
-            chunk = chunk[chunk["Marketplace"].str.strip().str.lower() == "flipkart"]
-            if not chunk.empty:
-                # Vectorized aggregation within chunk
-                chunk_agg = chunk.groupby("SKU")["Quantity"].sum().to_dict()
-                # Update global aggregate
-                for sku, qty in chunk_agg.items():
-                    sku_clean = str(sku).strip()
-                    sales_agg[sku_clean] = sales_agg.get(sku_clean, 0) + qty
-            del chunk
-            gc.collect()
+    # Define required columns to minimize RAM usage
+    SALES_COLS = ["Marketplace", "SKU", "Quantity"]
+    PM_COLS = ["EasycomSKU", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager", "Product Name", "CP"]
+    INV_COLS = ["sku", "old_quantity"]
 
-    # 2. Process PM File (Master lookup)
-    with st.spinner("Loading Product Master..."):
-        pm_file.seek(0)
-        pm_cols = ["EasycomSKU", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager", "Product Name", "CP"]
-        if pm_file.name.endswith('.csv'):
-            pm_df = pd.read_csv(pm_file, usecols=pm_cols)
-        else:
-            pm_df = pd.read_excel(pm_file, usecols=pm_cols)
+    # Save files to disk to prevent Streamlit from holding them in RAM
+    sales_path = save_to_tmp(sales_file)
+    pm_path = save_to_tmp(pm_file)
+    inv_path = save_to_tmp(inventory_file)
+    
+    try:
+        # 1. Process Sales Report in Chunks (Selective Loading)
+        sales_agg = {} # SKU -> Quantity
+        if sales_path:
+            with st.spinner("Processing Sales (Disk)..."):
+                # CSV Chunking with usecols and float32 for RAM
+                # detecting format via extension
+                is_excel = sales_path.endswith(('.xlsx', '.xls'))
+                
+                if is_excel:
+                    df = pd.read_excel(sales_path, usecols=SALES_COLS)
+                    df = df[df["Marketplace"].str.strip().str.lower() == "flipkart"]
+                    for sku, qty in df.groupby("SKU")["Quantity"].sum().items():
+                        sku_clean = str(sku).strip()
+                        sales_agg[sku_clean] = sales_agg.get(sku_clean, 0) + float(qty)
+                    del df
+                else:
+                    for chunk in pd.read_csv(sales_path, chunksize=chunk_size, usecols=SALES_COLS, dtype={"Quantity": "float32"}):
+                        chunk = chunk[chunk["Marketplace"].str.strip().str.lower() == "flipkart"]
+                        if not chunk.empty:
+                            chunk_agg = chunk.groupby("SKU")["Quantity"].sum().to_dict()
+                            for sku, qty in chunk_agg.items():
+                                sku_clean = str(sku).strip()
+                                sales_agg[sku_clean] = sales_agg.get(sku_clean, 0) + qty
+                        del chunk
+                        gc.collect()
+
+        # 2. Process PM File (Master lookup)
+        fsn_map = {}
+        vendor_sku_map = {}
+        brand_map = {}
+        manager_map = {}
+        product_map = {}
+        cp_map = {}
+
+        if pm_path:
+            with st.spinner("Processing Master (Disk)..."):
+                is_excel = pm_path.endswith(('.xlsx', '.xls'))
+                if is_excel:
+                    pm_df = pd.read_excel(pm_path, usecols=PM_COLS)
+                else:
+                    pm_df = pd.read_csv(pm_path, usecols=PM_COLS)
+                
+                pm_df = pm_df.drop_duplicates(subset=["EasycomSKU"])
+                
+                # Manual iterate to build maps (more RAM efficient than whole series to_dict)
+                for _, row in pm_df.iterrows():
+                    sku = str(row["EasycomSKU"]).strip()
+                    if sku:
+                        fsn_map[sku] = row.get("FNS")
+                        vendor_sku_map[sku] = row.get("Vendor SKU Codes")
+                        brand_map[sku] = row.get("Brand")
+                        manager_map[sku] = row.get("Brand Manager")
+                        product_map[sku] = row.get("Product Name")
+                        cp_map[sku] = row.get("CP", 0)
+                
+                del pm_df
+                gc.collect()
+
+        # 3. Process Inventory in Chunks
+        inventory_agg = {} # SKU -> Stock
+        if inv_path:
+            with st.spinner("Processing Inventory (Disk)..."):
+                is_excel = inv_path.endswith(('.xlsx', '.xls'))
+                if is_excel:
+                    df = pd.read_excel(inv_path, usecols=INV_COLS)
+                    df["sku"] = df["sku"].astype(str).str.replace("`", "", regex=False).str.strip()
+                    for sku, stock in df.groupby("sku")["old_quantity"].sum().items():
+                        inventory_agg[sku] = inventory_agg.get(sku, 0) + float(stock)
+                    del df
+                else:
+                    for chunk in pd.read_csv(inv_path, chunksize=chunk_size, usecols=INV_COLS, dtype={"old_quantity": "float32"}):
+                        chunk["sku"] = chunk["sku"].astype(str).str.replace("`", "", regex=False).str.strip()
+                        chunk_agg = chunk.groupby("sku")["old_quantity"].sum().to_dict()
+                        for sku, stock in chunk_agg.items():
+                            inventory_agg[sku] = inventory_agg.get(sku, 0) + stock
+                        del chunk
+                        gc.collect()
+
+        # 4. Assemble Reports
+        all_skus = set(sales_agg.keys()) | set(inventory_agg.keys())
+        records = []
+        for sku in all_skus:
+            sale_qty = sales_agg.get(sku, 0)
+            stock_qty = inventory_agg.get(sku, 0)
+            cp = cp_map.get(sku, 0)
+            if not isinstance(cp, (int, float)) or pd.isna(cp):
+                cp = 0
+                
+            records.append({
+                "SKU": sku,
+                "FNS": fsn_map.get(sku),
+                "Vendor SKU Codes": vendor_sku_map.get(sku),
+                "Brand": brand_map.get(sku),
+                "Brand Manager": manager_map.get(sku),
+                "Product Name": product_map.get(sku),
+                "Sales Qty": sale_qty,
+                "Stock": stock_qty,
+                "CP": cp,
+                "CP as Per Sales Qty": cp * sale_qty,
+                "CP as Per Stock": cp * stock_qty
+            })
         
-        pm_df = pm_df.drop_duplicates(subset=["EasycomSKU"])
+        full_df = pd.DataFrame(records)
+        del records
         
-        # Maps for lookup
-        fsn_map = pm_df.set_index("EasycomSKU")["FNS"].to_dict()
-        vendor_sku_map = pm_df.set_index("EasycomSKU")["Vendor SKU Codes"].to_dict()
-        brand_map = pm_df.set_index("EasycomSKU")["Brand"].to_dict()
-        manager_map = pm_df.set_index("EasycomSKU")["Brand Manager"].to_dict()
-        product_map = pm_df.set_index("EasycomSKU")["Product Name"].to_dict()
-        cp_map = pm_df.set_index("EasycomSKU")["CP"].to_dict()
+        # Split into required reports
+        sales_report = full_df[full_df["Sales Qty"] > 0][[
+            "SKU", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager",
+            "Product Name", "Sales Qty", "CP", "Stock", "CP as Per Sales Qty"
+        ]].copy()
+
+        inventory_report = full_df[full_df["Stock"] > 0][[
+            "SKU", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager",
+            "Product Name", "Stock", "Sales Qty", "CP", "CP as Per Stock", "CP as Per Sales Qty"
+        ]].rename(columns={"SKU": "sku"}).copy()
         
-        del pm_df
+        del full_df
         gc.collect()
-
-    # 3. Process Inventory in Chunks (Vectorized)
-    inventory_agg = {} # SKU -> Stock
-    with st.spinner("Reading Inventory data..."):
-        inventory_file.seek(0)
-        chunks = pd.read_csv(
-            inventory_file,
-            usecols=["sku", "old_quantity"],
-            dtype={"sku": "str", "old_quantity": "float32"},
-            chunksize=chunk_size
-        )
         
-        for chunk in chunks:
-            if not chunk.empty:
-                # Vectorized aggregation
-                chunk["sku"] = chunk["sku"].str.replace("`", "", regex=False).str.strip()
-                chunk_agg = chunk.groupby("sku")["old_quantity"].sum().to_dict()
-                for sku, stock in chunk_agg.items():
-                    inventory_agg[sku] = inventory_agg.get(sku, 0) + stock
-            del chunk
-            gc.collect()
-
-    # 4. Assemble Reports (High Speed)
-    # Get unique SKUs from both files
-    all_skus = set(sales_agg.keys()) | set(inventory_agg.keys())
-    
-    # Build list of records (only for SKUs with either sales or stock)
-    records = []
-    for sku in all_skus:
-        sale_qty = sales_agg.get(sku, 0)
-        stock_qty = inventory_agg.get(sku, 0)
-        cp = cp_map.get(sku, 0)
-        if not isinstance(cp, (int, float)) or pd.isna(cp):
-            cp = 0
-            
-        records.append({
-            "SKU": sku,
-            "FNS": fsn_map.get(sku),
-            "Vendor SKU Codes": vendor_sku_map.get(sku),
-            "Brand": brand_map.get(sku),
-            "Brand Manager": manager_map.get(sku),
-            "Product Name": product_map.get(sku),
-            "Sales Qty": sale_qty,
-            "Stock": stock_qty,
-            "CP": cp,
-            "CP as Per Sales Qty": cp * sale_qty,
-            "CP as Per Stock": cp * stock_qty
-        })
-    
-    full_df = pd.DataFrame(records)
-    del records
-    gc.collect()
-
-    # Split into required reports
-    sales_report = full_df[full_df["Sales Qty"] > 0][[
-        "SKU", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager",
-        "Product Name", "Sales Qty", "CP", "Stock", "CP as Per Sales Qty"
-    ]].copy()
-
-    inventory_report = full_df[full_df["Stock"] > 0][[
-        "SKU", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager",
-        "Product Name", "Stock", "Sales Qty", "CP", "CP as Per Stock", "CP as Per Sales Qty"
-    ]].rename(columns={"SKU": "sku"}).copy()
-    
-    del full_df
-    gc.collect()
-    
-    return sales_report, inventory_report
+        return sales_report, inventory_report
+        
+    finally:
+        # ABSOLUTELY CLEAN UP DISK
+        for p in [sales_path, pm_path, inv_path]:
+            if p and os.path.exists(p):
+                try: os.remove(p)
+                except: pass
+        gc.collect()
 
 if sales_file and pm_file and inventory_file and generate_button:
     try:

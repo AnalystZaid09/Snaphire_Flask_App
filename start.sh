@@ -7,6 +7,11 @@ STREAMLIT_PORT=8501
 
 echo "🚀 Starting Snaphire Unified Portal..."
 
+# 0. Optimization Flags
+export PYTHONMALLOC=malloc
+export PYTHONOPTIMIZE=1
+export PYTHONUNBUFFERED=1
+
 # 1. Configure Nginx with Railway's $PORT
 echo "🔧 Configuring Nginx to listen on port $PORT..."
 sed -i "s/\$PORT/$PORT/g" /etc/nginx/nginx.conf
