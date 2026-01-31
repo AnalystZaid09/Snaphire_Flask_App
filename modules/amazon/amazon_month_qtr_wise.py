@@ -4,6 +4,7 @@ import zipfile
 from pathlib import Path
 import io
 import calendar
+import gc
 
 import base64
 from datetime import datetime as dt
@@ -44,6 +45,7 @@ st.sidebar.header("Upload Files")
 # Add a clear cache button to ensure fresh data processing
 if st.sidebar.button("🔄 Clear Cache & Refresh"):
     st.cache_data.clear()
+    gc.collect()
     st.rerun()
 
 zip_files = st.sidebar.file_uploader(
@@ -54,10 +56,11 @@ zip_files = st.sidebar.file_uploader(
 pm_file = st.sidebar.file_uploader("Upload PM Excel File", type=['xlsx', 'xls'])
 
 if zip_files and pm_file:
-    # Process ZIP files
-    @st.cache_data
+    # Process ZIP files (Extreme Memory Optimization: removed @st.cache_data)
     def process_zip_files(zip_file_list):
         all_dfs = []
+        # Essential columns for processing
+        essential_cols = ["Invoice Date", "Transaction Type", "Asin", "Quantity", "Invoice Amount", "Order Id", "Shipment Id"]
         
         for uploaded_zip in zip_file_list:
             with zipfile.ZipFile(uploaded_zip, 'r') as z:
@@ -67,35 +70,52 @@ if zip_files and pm_file:
                     
                     with z.open(file_name) as f:
                         if file_name.lower().endswith('.csv'):
-                            df = pd.read_csv(f, low_memory=False)
+                            # Use usecols to minimize memory usage
+                            df = pd.read_csv(f, usecols=lambda x: x in essential_cols, low_memory=True)
                         elif file_name.lower().endswith(('.xlsx', '.xls')):
-                            df = pd.read_excel(f)
+                            df = pd.read_excel(f, usecols=lambda x: x in essential_cols)
                         else:
                             continue
                         
-                        df['source_zip'] = uploaded_zip.name
-                        df['source_file'] = file_name
+                        # Downcast and categorize immediately if possible
+                        if "Transaction Type" in df.columns:
+                            df["Transaction Type"] = df["Transaction Type"].astype("category")
+                        if "Quantity" in df.columns:
+                            df["Quantity"] = pd.to_numeric(df["Quantity"], errors='coerce').fillna(0).astype("int32")
+                        if "Invoice Amount" in df.columns:
+                            df["Invoice Amount"] = pd.to_numeric(df["Invoice Amount"], errors='coerce').fillna(0).astype("float32")
+                            
+                        # df['source_zip'] = uploaded_zip.name # Optional: omit to save memory
+                        # df['source_file'] = file_name
                         all_dfs.append(df)
+                        gc.collect()
         
         combined_df = pd.concat(all_dfs, ignore_index=True)
+        del all_dfs
+        gc.collect()
         return combined_df
     
-    @st.cache_data
+    # Process data (Extreme Memory Optimization: removed @st.cache_data)
     def process_data(combined_df, pm_df):
         # Store original count before filtering
         original_count = len(combined_df)
         
-        # Get transaction type counts for debugging (BEFORE any modifications)
-        transaction_counts = combined_df['Transaction Type'].str.strip().str.lower().value_counts().to_dict()
-        
-        # Store unfiltered combined data for the "All Data" tab
-        unfiltered_df = combined_df.copy()
+        # Get transaction type counts for debugging
+        transaction_counts = combined_df['Transaction Type'].value_counts().to_dict()
         
         # Filter for Shipment transactions only
-        filtered_df = combined_df[combined_df['Transaction Type'].str.strip().str.lower() == 'shipment'].copy()
+        filtered_df = combined_df[combined_df['Transaction Type'].astype(str).str.strip().str.lower() == 'shipment'].copy()
+        
+        # IMPORTANT: To save memory, we might NOT want a full copy of all data in unfiltered_df 
+        # unless absolutely necessary. But tab 5 needs it. 
+        # Let's keep it but optimize it.
+        unfiltered_df = combined_df
+        del combined_df
+        gc.collect()
+
         filtered_df.reset_index(drop=True, inplace=True)
         
-        # Store counts AFTER filtering but BEFORE merge (to avoid inflation from PM duplicates)
+        # Store counts
         filtered_count = len(filtered_df)
         unfiltered_count = len(unfiltered_df)
         
@@ -103,56 +123,50 @@ if zip_files and pm_file:
         def add_date_columns(df):
             df['Invoice Date'] = pd.to_datetime(df['Invoice Date'], errors='coerce')
             df['Date'] = df['Invoice Date'].dt.date
-            df['Month'] = pd.to_datetime(df['Date']).dt.month
-            df['Month_Name'] = pd.to_datetime(df['Date']).dt.strftime('%B')
-            df['Month_Year'] = pd.to_datetime(df['Date']).dt.strftime('%b-%y')
-            df['Year'] = pd.to_datetime(df['Date']).dt.year
+            df['Month'] = pd.to_datetime(df['Date']).dt.month.astype("int8")
+            df['Month_Name'] = pd.to_datetime(df['Date']).dt.strftime('%B').astype("category")
+            df['Month_Year'] = pd.to_datetime(df['Date']).dt.strftime('%b-%y').astype("category")
+            df['Year'] = pd.to_datetime(df['Date']).dt.year.astype("int16")
             
             # Define custom quarters
             def get_custom_quarter(month):
-                if month in [1, 2, 3]:
-                    return 'Q1'
-                elif month in [4, 5, 6]:
-                    return 'Q2'
-                elif month in [7, 8, 9]:
-                    return 'Q3'
-                else:
-                    return 'Q4'
+                if month in [1, 2, 3]: return 'Q1'
+                if month in [4, 5, 6]: return 'Q2'
+                if month in [7, 8, 9]: return 'Q3'
+                return 'Q4'
             
-            df['Quarter'] = df['Month'].apply(get_custom_quarter)
-            df['Quarter_Year'] = df['Quarter'] + '-' + df['Year'].astype(str)
+            df['Quarter'] = df['Month'].apply(get_custom_quarter).astype("category")
+            df['Quarter_Year'] = (df['Quarter'].astype(str) + '-' + df['Year'].astype(str)).astype("category")
             return df
         
         # Process dates for both dataframes
         filtered_df = add_date_columns(filtered_df)
         unfiltered_df = add_date_columns(unfiltered_df)
         
-        # Process PM file - DEDUPLICATE on ASIN to prevent row inflation
-        pm_cols = pm_df[['ASIN', 'Brand', 'Brand Manager', 'Vendor SKU Codes', 'Product Name']].drop_duplicates(subset=['ASIN'], keep='first')
+        # Process PM file - DEDUPLICATE and use essential columns
+        pm_cols_list = ['ASIN', 'Brand', 'Brand Manager', 'Vendor SKU Codes', 'Product Name']
+        pm_cols = pm_df[pm_cols_list].drop_duplicates(subset=['ASIN'], keep='first')
+        
+        # Categorize PM strings
+        for col in ['Brand', 'Brand Manager']:
+            pm_cols[col] = pm_cols[col].astype("category")
         
         # Merge with PM data for both dataframes
-        filtered_df = filtered_df.merge(
-            pm_cols,
-            left_on='Asin',
-            right_on='ASIN',
-            how='left'
-        )
+        filtered_df = filtered_df.merge(pm_cols, left_on='Asin', right_on='ASIN', how='left')
+        unfiltered_df = unfiltered_df.merge(pm_cols, left_on='Asin', right_on='ASIN', how='left')
         
-        unfiltered_df = unfiltered_df.merge(
-            pm_cols,
-            left_on='Asin',
-            right_on='ASIN',
-            how='left'
-        )
+        del pm_cols, pm_df
+        gc.collect()
         
         return filtered_df, unfiltered_df, filtered_count, unfiltered_count, transaction_counts
     
-    with st.spinner("Processing files..."):
+    with st.spinner("Processing files (Extreme Memory Optimization)..."):
         combined_df = process_zip_files(zip_files)
         pm_df = pd.read_excel(pm_file)
         processed_df, unfiltered_combined_df, filtered_count, unfiltered_count, transaction_counts = process_data(combined_df, pm_df)
+        gc.collect()
     
-    # Show detailed record counts (using counts captured BEFORE merge to avoid PM duplicate inflation)
+    # Show detailed record counts
     col1, col2 = st.columns(2)
     with col1:
         st.success(f"✅ Filtered (Shipment only): **{filtered_count:,}** records")
