@@ -17,8 +17,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Copy Nginx config to the right place
-COPY nginx.conf /etc/nginx/sites-available/default
+# Copy Nginx config to the right place for standalone execution
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Make start script executable
 RUN chmod +x start.sh
