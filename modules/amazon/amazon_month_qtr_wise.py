@@ -100,20 +100,22 @@ if zip_files and pm_file:
         # Store original count before filtering
         original_count = len(combined_df)
         
-        # Get transaction type counts for debugging
+        # Store transaction type counts for debugging
         transaction_counts = combined_df['Transaction Type'].value_counts().to_dict()
         
         # Filter for Shipment transactions only
         filtered_df = combined_df[combined_df['Transaction Type'].astype(str).str.strip().str.lower() == 'shipment'].copy()
         
-        # IMPORTANT: To save memory, we might NOT want a full copy of all data in unfiltered_df 
-        # unless absolutely necessary. But tab 5 needs it. 
-        # Let's keep it but optimize it.
-        unfiltered_df = combined_df
+        # AGGRESSIVE PRUNING for unfiltered_df (Tab 5)
+        # Tab 5 only needs a subset of columns. Let's drop everything else to save RAM.
+        needed_unfiltered_cols = ['Invoice Date', 'Transaction Type', 'Asin', 'Quantity', 'Invoice Amount', 'Order Id', 'Shipment Id']
+        unfiltered_df = combined_df[[c for c in combined_df.columns if c in needed_unfiltered_cols]].copy()
+        
         del combined_df
         gc.collect()
 
         filtered_df.reset_index(drop=True, inplace=True)
+        unfiltered_df.reset_index(drop=True, inplace=True)
         
         # Store counts
         filtered_count = len(filtered_df)
@@ -121,22 +123,23 @@ if zip_files and pm_file:
         
         # Function to process date columns
         def add_date_columns(df):
-            df['Invoice Date'] = pd.to_datetime(df['Invoice Date'], errors='coerce')
-            df['Date'] = df['Invoice Date'].dt.date
-            df['Month'] = pd.to_datetime(df['Date']).dt.month.astype("int8")
-            df['Month_Name'] = pd.to_datetime(df['Date']).dt.strftime('%B').astype("category")
-            df['Month_Year'] = pd.to_datetime(df['Date']).dt.strftime('%b-%y').astype("category")
-            df['Year'] = pd.to_datetime(df['Date']).dt.year.astype("int16")
-            
-            # Define custom quarters
-            def get_custom_quarter(month):
-                if month in [1, 2, 3]: return 'Q1'
-                if month in [4, 5, 6]: return 'Q2'
-                if month in [7, 8, 9]: return 'Q3'
-                return 'Q4'
-            
-            df['Quarter'] = df['Month'].apply(get_custom_quarter).astype("category")
-            df['Quarter_Year'] = (df['Quarter'].astype(str) + '-' + df['Year'].astype(str)).astype("category")
+            if 'Invoice Date' in df.columns:
+                df['Invoice Date'] = pd.to_datetime(df['Invoice Date'], errors='coerce')
+                df['Date'] = df['Invoice Date'].dt.date
+                df['Month'] = pd.to_datetime(df['Date']).dt.month.astype("int8")
+                df['Month_Name'] = pd.to_datetime(df['Date']).dt.strftime('%B').astype("category")
+                df['Month_Year'] = pd.to_datetime(df['Date']).dt.strftime('%b-%y').astype("category")
+                df['Year'] = pd.to_datetime(df['Date']).dt.year.astype("int16")
+                
+                # Define custom quarters
+                def get_custom_quarter(month):
+                    if month in [1, 2, 3]: return 'Q1'
+                    if month in [4, 5, 6]: return 'Q2'
+                    if month in [7, 8, 9]: return 'Q3'
+                    return 'Q4'
+                
+                df['Quarter'] = df['Month'].apply(get_custom_quarter).astype("category")
+                df['Quarter_Year'] = (df['Quarter'].astype(str) + '-' + df['Year'].astype(str)).astype("category")
             return df
         
         # Process dates for both dataframes
@@ -152,8 +155,14 @@ if zip_files and pm_file:
             pm_cols[col] = pm_cols[col].astype("category")
         
         # Merge with PM data for both dataframes
+        # Use on='Asin' but ensure casing matches
         filtered_df = filtered_df.merge(pm_cols, left_on='Asin', right_on='ASIN', how='left')
         unfiltered_df = unfiltered_df.merge(pm_cols, left_on='Asin', right_on='ASIN', how='left')
+        
+        # Final drop of duplicate ID columns to save memory
+        for df in [filtered_df, unfiltered_df]:
+            if 'ASIN' in df.columns:
+                df.drop(columns=['ASIN'], inplace=True)
         
         del pm_cols, pm_df
         gc.collect()
