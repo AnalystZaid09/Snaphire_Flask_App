@@ -62,8 +62,7 @@ def process_flipkart_data(sales_df, pm_df, inventory_df):
     """Process Flipkart data and return sales and inventory reports"""
     
     # Process Sales Report
-    # Filter only Flipkart marketplace
-    sales_df = sales_df[sales_df["Marketplace"].str.strip().str.lower() == "flipkart"]
+    # Note: sales_df is already filtered for Flipkart in the reading phase
     
     # Pivot: SKU wise sales quantity
     sales_pivot = (
@@ -73,25 +72,19 @@ def process_flipkart_data(sales_df, pm_df, inventory_df):
         .rename(columns={"Quantity": "Sales Qty"})
     )
     
-    # Create lookup dictionaries from PM file - Optimized: set index once
-    pm_lookup = pm_df.set_index("EasycomSKU")
-    fsn_map = pm_lookup["FNS"].to_dict()
-    vendor_sku_map = pm_lookup["Vendor SKU Codes"].to_dict()
-    brand_map = pm_lookup["Brand"].to_dict()
-    manager_map = pm_lookup["Brand Manager"].to_dict()
-    product_map = pm_lookup["Product Name"].to_dict()
-    cp_map = pm_lookup["CP"].to_dict()
+    # Efficiently merge PM data once instead of multiple dict mappings
+    pm_cols = ["EasycomSKU", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager", "Product Name", "CP"]
+    sales_pivot = sales_pivot.merge(
+        pm_df[pm_cols],
+        left_on="SKU",
+        right_on="EasycomSKU",
+        how="left"
+    )
+    if "EasycomSKU" in sales_pivot.columns:
+        sales_pivot.drop(columns=["EasycomSKU"], inplace=True)
     
-    del pm_lookup
-    gc.collect()
-    
-    # Map data to sales pivot
-    sales_pivot["FNS"] = sales_pivot["SKU"].map(fsn_map)
-    sales_pivot["Vendor SKU Codes"] = sales_pivot["SKU"].map(vendor_sku_map)
-    sales_pivot["Brand"] = sales_pivot["SKU"].map(brand_map)
-    sales_pivot["Brand Manager"] = sales_pivot["SKU"].map(manager_map)
-    sales_pivot["Product Name"] = sales_pivot["SKU"].map(product_map)
-    sales_pivot["CP"] = pd.to_numeric(sales_pivot["SKU"].map(cp_map), errors='coerce').round(2)
+    # Ensure CP is numeric
+    sales_pivot["CP"] = pd.to_numeric(sales_pivot["CP"], errors='coerce').fillna(0).round(2)
     
     # Process Inventory Report
     # Clean SKU column - remove backticks and trim
@@ -111,8 +104,15 @@ def process_flipkart_data(sales_df, pm_df, inventory_df):
     )
     
     # Add stock to sales report
-    stock_map = inventory_pivot.set_index("sku")["Stock"].to_dict()
-    sales_pivot["Stock"] = sales_pivot["SKU"].map(stock_map)
+    sales_pivot = sales_pivot.merge(
+        inventory_pivot[["sku", "Stock"]],
+        left_on="SKU",
+        right_on="sku",
+        how="left"
+    )
+    if "sku" in sales_pivot.columns:
+        sales_pivot.drop(columns=["sku"], inplace=True)
+    sales_pivot["Stock"] = sales_pivot["Stock"].fillna(0).astype(int)
     
     # Calculate CP as Per Sales Qty for sales report
     sales_pivot["CP as Per Sales Qty"] = (sales_pivot["CP"] * sales_pivot["Sales Qty"]).round(2)
@@ -123,20 +123,29 @@ def process_flipkart_data(sales_df, pm_df, inventory_df):
         "Product Name", "Sales Qty", "CP", "Stock", "CP as Per Sales Qty"
     ]]
     
-    # Process Inventory Report
-    inventory_report = inventory_pivot.copy()
+    # Process Inventory Report (Merged from Pivot + PM)
+    inventory_report = inventory_pivot.merge(
+        pm_df[pm_cols],
+        left_on="sku",
+        right_on="EasycomSKU",
+        how="left"
+    )
+    if "EasycomSKU" in inventory_report.columns:
+        inventory_report.drop(columns=["EasycomSKU"], inplace=True)
     
-    # Map data to inventory report
-    inventory_report["FNS"] = inventory_report["sku"].map(fsn_map)
-    inventory_report["Vendor SKU Codes"] = inventory_report["sku"].map(vendor_sku_map)
-    inventory_report["Brand"] = inventory_report["sku"].map(brand_map)
-    inventory_report["Brand Manager"] = inventory_report["sku"].map(manager_map)
-    inventory_report["Product Name"] = inventory_report["sku"].map(product_map)
-    inventory_report["CP"] = pd.to_numeric(inventory_report["sku"].map(cp_map), errors='coerce').round(2)
+    # Ensure CP is numeric
+    inventory_report["CP"] = pd.to_numeric(inventory_report["CP"], errors='coerce').fillna(0).round(2)
     
     # Add sales qty to inventory report
-    sale_qty_inv_map = sales_pivot.set_index("SKU")["Sales Qty"].to_dict()
-    inventory_report["Sales Qty"] = inventory_report["sku"].map(sale_qty_inv_map)
+    inventory_report = inventory_report.merge(
+        sales_pivot[["SKU", "Sales Qty"]],
+        left_on="sku",
+        right_on="SKU",
+        how="left"
+    )
+    if "SKU" in inventory_report.columns:
+        inventory_report.drop(columns=["SKU"], inplace=True)
+    inventory_report["Sales Qty"] = inventory_report["Sales Qty"].fillna(0).astype(int)
     
     # Calculate CP as Per Stock and CP as Per Sales Qty for inventory report
     inventory_report["CP as Per Stock"] = (inventory_report["CP"] * inventory_report["Stock"]).round(2)
@@ -155,12 +164,26 @@ if sales_file and pm_file and inventory_file and generate_button:
     try:
         container = st.container()
         with st.spinner("Processing files..."):
-            # 1. Read Sales File (Optimized)
-            sales_df = pd.read_csv(
+            # 1. Read Sales File in chunks (Memory Efficient)
+            chunks = []
+            for chunk in pd.read_csv(
                 sales_file, 
                 usecols=["Marketplace", "SKU", "Quantity"],
-                dtype={"Marketplace": "category", "SKU": "str", "Quantity": "float32"}
-            )
+                chunksize=50000,
+                dtype={"Marketplace": "str", "SKU": "str", "Quantity": "float32"}
+            ):
+                # Filter immediately to save RAM
+                filtered_chunk = chunk[chunk["Marketplace"].str.contains("Flipkart", case=False, na=False)]
+                if not filtered_chunk.empty:
+                    chunks.append(filtered_chunk)
+            
+            if not chunks:
+                sales_df = pd.DataFrame(columns=["Marketplace", "SKU", "Quantity"])
+            else:
+                sales_df = pd.concat(chunks, ignore_index=True)
+            
+            del chunks
+            gc.collect()
             
             # 2. Read PM File (Optimized)
             pm_cols = ["EasycomSKU", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager", "Product Name", "CP"]
@@ -169,6 +192,7 @@ if sales_file and pm_file and inventory_file and generate_button:
             else:
                 pm_df = pd.read_excel(pm_file, usecols=pm_cols)
             pm_df = pm_df.drop_duplicates(subset=["EasycomSKU"])
+            gc.collect()
             
             # 3. Read Inventory File (Optimized)
             inventory_df = pd.read_csv(
