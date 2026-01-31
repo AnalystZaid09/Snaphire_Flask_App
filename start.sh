@@ -1,10 +1,13 @@
 #!/bin/bash
+set -e  # Exit on any error
 
 # Configuration
 PORT=${PORT:-10000}
 STREAMLIT_PORT=8501
 
 echo "🚀 Starting Snaphire Unified Portal (Streamlit-Only Mode)..."
+echo "📍 Railway PORT: $PORT"
+echo "📍 Streamlit PORT: $STREAMLIT_PORT"
 
 # 0. Optimization Flags
 export PYTHONMALLOC=malloc
@@ -17,9 +20,15 @@ export RAILWAY_ENVIRONMENT=production
 # 1. Configure Nginx with Railway's $PORT
 echo "🔧 Configuring Nginx to listen on port $PORT..."
 sed -i "s/\$PORT/$PORT/g" /etc/nginx/nginx.conf
-nginx -t
+echo "📄 Nginx config after sed:"
+cat /etc/nginx/nginx.conf | head -20
+echo "---"
 
-# 2. Start Nginx in background
+# 2. Test Nginx config (fail fast if invalid)
+echo "🧪 Testing Nginx configuration..."
+nginx -t || { echo "❌ Nginx config test FAILED"; exit 1; }
+
+# 3. Start Nginx in background
 echo "🌐 Starting Nginx Proxy..."
 /usr/sbin/nginx -g "daemon on;"
 
