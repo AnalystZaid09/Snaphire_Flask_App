@@ -29,6 +29,7 @@ export RENDER=true
 export RAILWAY_ENVIRONMENT=production
 python -m streamlit run streamlit_app.py \
     --server.port=$STREAMLIT_PORT \
+    --server.address=127.0.0.1 \
     --server.headless=true \
     --server.enableXsrfProtection=false \
     --server.enableCORS=false \
@@ -36,13 +37,39 @@ python -m streamlit run streamlit_app.py \
     --server.maxUploadSize=2000 \
     --server.maxMessageSize=200 \
     --server.baseUrlPath="/st-engine" \
-    --browser.gatherUsageStats=false &
+    --browser.gatherUsageStats=false > streamlit.log 2>&1 &
 
-# Give Streamlit time to start before Nginx/Gunicorn
-sleep 5
+# 4. Wait for Streamlit to be ready
+echo "⏳ Waiting for Streamlit to start on port $STREAMLIT_PORT..."
+python3 -c "
+import socket
+import time
+import sys
 
-# 4. Start Flask (Internal via Gunicorn)
-# Limit to 1 worker and 1 thread to save RAM for Streamlit
+port = $STREAMLIT_PORT
+host = '127.0.0.1'
+start_time = time.time()
+timeout = 30
+
+while True:
+    try:
+        with socket.create_connection((host, port), timeout=1):
+            print(f'✅ Streamlit is UP on port {port}')
+            sys.exit(0)
+    except (socket.timeout, ConnectionRefusedError, OSError):
+        if time.time() - start_time > timeout:
+            print(f'❌ Streamlit failed to start within {timeout}s')
+            # Print log for debugging
+            try:
+                with open('streamlit.log', 'r') as f:
+                    print('--- Streamlit Logs ---')
+                    print(f.read())
+            except: pass
+            sys.exit(1)
+        time.sleep(1)
+"
+
+# 5. Start Flask (Internal via Gunicorn)
 echo "🏗️ Starting Flask Portal on port $FLASK_PORT..."
 gunicorn --bind 0.0.0.0:$FLASK_PORT \
      --workers 1 \
