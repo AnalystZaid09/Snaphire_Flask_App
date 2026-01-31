@@ -24,7 +24,9 @@ python -m streamlit run streamlit_app.py \
     --server.headless=true \
     --server.enableXsrfProtection=false \
     --server.enableCORS=false \
+    --server.enableWebsocketCompression=false \
     --server.maxUploadSize=2000 \
+    --server.maxMessageSize=200 \
     --server.baseUrlPath="/st-engine" \
     --browser.gatherUsageStats=false &
 
