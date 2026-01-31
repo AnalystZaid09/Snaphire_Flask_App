@@ -386,6 +386,7 @@ with st.sidebar:
                         auto_save_generated_reports(results, MODULE_NAME, tool_name=TOOL_NAME)
                         
                         st.success("✅ Data processed successfully!")
+                        st.rerun()  # Rerun to display results in tabs
                         
                     except Exception as e:
                         st.error(f"❌ Error processing files: {str(e)}")
@@ -629,6 +630,7 @@ with st.sidebar:
                         auto_save_generated_reports(manager_results, MODULE_NAME, tool_name=TOOL_NAME)
                         
                         st.success("✅ Manager data processed successfully!")
+                        st.rerun()  # Rerun to display results in tabs
                         
                     except Exception as e:
                         st.error(f"❌ Error processing files: {str(e)}")
