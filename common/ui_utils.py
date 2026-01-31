@@ -287,6 +287,10 @@ def to_excel(df: pd.DataFrame, apply_doc_formatting: bool = False, sheet_name: s
     # Handle MultiIndex or standard Index
     index_needed = isinstance(df.index, pd.MultiIndex) or (df.index.name is not None)
     
+    # Sanitize sheet name - remove invalid Excel characters
+    import re
+    sheet_name = re.sub(r'[\\/\*\?\:\[\]]', '_', str(sheet_name))[:31]
+    
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=index_needed, sheet_name=sheet_name)
         
