@@ -1,0 +1,20 @@
+# Railway-specific Dockerfile (simpler, no nginx)
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY . .
+
+# Make scripts executable
+RUN chmod +x start_railway.sh
+
+# Railway uses PORT environment variable
+ENV PORT=8080
+
+# Start with Railway script
+CMD ["./start_railway.sh"]
