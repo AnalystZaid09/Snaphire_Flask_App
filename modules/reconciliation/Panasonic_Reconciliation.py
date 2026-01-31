@@ -264,22 +264,25 @@ def parse_pdf_with_azure(file_bytes, endpoint, key):
             if getattr(doc0, "fields", None):
                  inv_id_field = doc0.fields.get("InvoiceId")
                  if inv_id_field:
-                     header["InvoiceId"] = inv_id_field.value_string or inv_id_field.content
+                     # Handle both old and new SDK versions
+                     header["InvoiceId"] = getattr(inv_id_field, 'value', None) or getattr(inv_id_field, 'value_string', None) or getattr(inv_id_field, 'content', None)
 
             items_field = doc0.fields.get("Items") if getattr(doc0, "fields", None) else None
-            if items_field and getattr(items_field, "value_array", None):
-                for item in items_field.value_array:
-                    obj = item.value_object or {}
+            value_array = getattr(items_field, "value", None) or getattr(items_field, "value_array", None) if items_field else None
+            if value_array:
+                for item in value_array:
+                    obj = getattr(item, "value", None) or getattr(item, "value_object", None) or {}
                     def rv(k):
-                        v = obj.get(k)
+                        v = obj.get(k) if isinstance(obj, dict) else None
                         if not v:
                             return None
+                        # Try multiple attribute names for compatibility
                         try:
                             if getattr(v, "value_currency", None) and getattr(v.value_currency, "amount", None) is not None:
                                 return v.value_currency.amount
                         except Exception:
                             pass
-                        for attr in ("value_string", "value_number"):
+                        for attr in ("value", "value_string", "value_number", "content"):
                             try:
                                 val = getattr(v, attr, None)
                                 if val is not None:
