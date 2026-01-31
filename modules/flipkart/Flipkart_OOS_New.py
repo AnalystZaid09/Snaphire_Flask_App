@@ -455,7 +455,7 @@ if business_file and purchase_master_file and inventory_file:
             no_of_days_inventory, doc_inventory_threshold
         )
         
-        # AUTO-SAVE generated reports to MongoDB
+        # Prepare reports for auto-save
         reports_to_save = {
             "Business Pivot": Business_Pivot,
             "OOS Report": OOS_Report,
@@ -464,7 +464,19 @@ if business_file and purchase_master_file and inventory_file:
             "OOS Inventory": OOS_Inventory,
             "Overstock Inventory": Overstock_Inventory
         }
-        auto_save_generated_reports(reports_to_save, MODULE_NAME, tool_name=TOOL_NAME)
+        
+        # Metadata for filename tracking
+        auto_save_metadata = {
+            "business_report_file": business_file.name if hasattr(business_file, 'name') else "Unknown",
+            "inventory_report_file": inventory_file.name if hasattr(inventory_file, 'name') else "Unknown"
+        }
+        
+        auto_save_generated_reports(
+            reports_to_save, 
+            MODULE_NAME, 
+            tool_name=TOOL_NAME,
+            metadata=auto_save_metadata
+        )
 
         # Create tabs
         tab1, tab2 = st.tabs(["📊 Business Report", "📦 Inventory Report"])

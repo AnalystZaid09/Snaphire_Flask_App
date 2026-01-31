@@ -423,7 +423,8 @@ def _get_saved_reports_key(module_name: str) -> str:
 
 
 def auto_save_generated_reports(reports: Dict[str, pd.DataFrame], module_name: str,
-                                 show_toast: bool = True, tool_name: str = None) -> int:
+                                 show_toast: bool = True, tool_name: str = None,
+                                 metadata: Dict = None) -> int:
     """
     AUTO-SAVE all generated reports to MongoDB immediately when called.
     
@@ -432,6 +433,7 @@ def auto_save_generated_reports(reports: Dict[str, pd.DataFrame], module_name: s
         module_name: Module name (e.g., 'amazon')
         show_toast: Whether to show success toast
         tool_name: Tool name (auto-detected if not provided)
+        metadata: Optional additional metadata to include
     """
     if not is_mongo_available() or not save_report_with_tracking:
         logger.warning("MongoDB not available for auto-save")
@@ -459,6 +461,14 @@ def auto_save_generated_reports(reports: Dict[str, pd.DataFrame], module_name: s
     success_count = 0
     new_saves = []
     
+    # Prepare base metadata
+    base_metadata = {
+        "auto_saved": True,
+        "generated_at": datetime.now().isoformat()
+    }
+    if metadata:
+        base_metadata.update(metadata)
+    
     for report_name, df in reports.items():
         # Handle cases where df might be a list or other object
         row_count = len(df) if hasattr(df, '__len__') else 0
@@ -470,7 +480,6 @@ def auto_save_generated_reports(reports: Dict[str, pd.DataFrame], module_name: s
         
         try:
             filename = f"auto_{get_download_filename(report_name.replace(' ', '_'))}"
-            col_count = len(df.columns) if hasattr(df, 'columns') else 0
             
             success = save_report_with_tracking(
                 module_name=module_name,
@@ -479,10 +488,7 @@ def auto_save_generated_reports(reports: Dict[str, pd.DataFrame], module_name: s
                 df_data=df,
                 user_email=user,
                 filename=filename,
-                metadata={
-                    "auto_saved": True,
-                    "generated_at": datetime.now().isoformat()
-                }
+                metadata=base_metadata
             )
             
             if success:
