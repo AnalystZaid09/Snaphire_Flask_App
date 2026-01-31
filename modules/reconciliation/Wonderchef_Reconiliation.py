@@ -307,8 +307,31 @@ if st.button("🔍 Start Reconciliation", type="primary", disabled=not (pdf_file
                 key="dl_wonderchef_detailed"
             )
         with col_dl2:
+            # Create summary DataFrame for download
+            summary_df = pd.DataFrame({
+                'Metric': [
+                    'Total Items', 
+                    'Matched Items', 
+                    'Accuracy',
+                    'PDF Total Quantity',
+                    'Excel Total Quantity',
+                    'PDF Grand Total', 
+                    'Excel Grand Total', 
+                    'Grand Total Variance'
+                ],
+                'Value': [
+                    len(comparison_df),
+                    len(comparison_df[(comparison_df['Qty_Match']) & (comparison_df['Tax_Status']) & (comparison_df['Total_Match'])]),
+                    f"{accuracy:.2f}%",
+                    f"{pdf_df['Qty_PDF'].sum():.0f}",
+                    f"{excel_df['Qty_EXCEL'].sum():.0f}",
+                    f"₹{pdf_totals['Grand_Total']:,.2f}",
+                    f"₹{excel_df['Total_EXCEL'].sum():,.2f}",
+                    f"₹{pdf_totals['Grand_Total'] - excel_df['Total_EXCEL'].sum():,.2f}"
+                ]
+            })
             download_module_report(
-                df=summary_data,
+                df=summary_df,
                 module_name=MODULE_NAME,
                 report_name=f"Wonderchef_Summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
                 button_label="📥 Download Summary",
