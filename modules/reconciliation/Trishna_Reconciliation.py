@@ -15,6 +15,8 @@ import warnings
 # Suppress warnings
 warnings.filterwarnings("ignore", module="fuzzywuzzy")
 
+MODULE_NAME = "reconciliation"
+
 # Load environment variables
 load_dotenv()
 
