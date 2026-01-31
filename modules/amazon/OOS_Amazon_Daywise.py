@@ -19,6 +19,14 @@ apply_professional_style()
 
 render_header("Amazon OOS Daywise Analysis Dashboard")
 
+# Initialize session state
+if 'processed' not in st.session_state:
+    st.session_state['processed'] = False
+if 'sales_report' not in st.session_state:
+    st.session_state['sales_report'] = None
+if 'inventory_report' not in st.session_state:
+    st.session_state['inventory_report'] = None
+
 # File upload section
 st.sidebar.header("Upload Files")
 max_days_file = st.sidebar.file_uploader("Upload 90 Days Sales File", type=['xlsx'])
@@ -176,6 +184,9 @@ if process_data and all([max_days_file, min_days_file, inventory_file, pm_file])
             sales_report = create_sales_report(day_max, day_min, PM, Inventory, max_days, min_days)
             inventory_report = create_inventory_report(Inventory, PM, sales_report, max_days, min_days)
             
+            # Store in session state
+            st.session_state['sales_report'] = sales_report
+            st.session_state['inventory_report'] = inventory_report
             st.session_state['processed'] = True
             
             # Auto-save all generated reports to MongoDB
