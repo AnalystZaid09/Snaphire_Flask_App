@@ -21,10 +21,10 @@ echo "🎬 Starting Streamlit Engine on port $STREAMLIT_PORT..."
 export DOCKER_ENV=true
 export RENDER=true
 export RAILWAY_ENVIRONMENT=production
-# Bind to 0.0.0.0 for standard docker networking and log to stdout for Railway diagnostics
+# Force 127.0.0.1 (IPv4) to match Nginx upstream and avoid resolution issues
 python -m streamlit run streamlit_app.py \
     --server.port=$STREAMLIT_PORT \
-    --server.address=0.0.0.0 \
+    --server.address=127.0.0.1 \
     --server.headless=true \
     --server.enableXsrfProtection=false \
     --server.enableCORS=false \
@@ -35,25 +35,25 @@ python -m streamlit run streamlit_app.py \
     --browser.gatherUsageStats=false &
 
 # 4. Wait for Streamlit to be ready
-echo "⏳ Waiting for Streamlit to start on port $STREAMLIT_PORT..."
+echo "⏳ Waiting for Streamlit (IPv4 127.0.0.1) on port $STREAMLIT_PORT..."
 python3 -c "
 import socket
 import time
 import sys
 
 port = $STREAMLIT_PORT
-host = '0.0.0.0'
+host = '127.0.0.1'
 start_time = time.time()
 timeout = 30
 
 while True:
     try:
         with socket.create_connection((host, port), timeout=1):
-            print(f'✅ Streamlit is UP on port {port}')
+            print(f'✅ Streamlit is UP on {host}:{port}')
             sys.exit(0)
     except (socket.timeout, ConnectionRefusedError, OSError):
         if time.time() - start_time > timeout:
-            print(f'❌ Streamlit failed to start within {timeout}s')
+            print(f'❌ Streamlit failed to start within {timeout}s on {host}')
             sys.exit(1)
         time.sleep(1)
 " || exit 1

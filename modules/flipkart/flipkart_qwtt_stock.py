@@ -57,8 +57,8 @@ def to_excel(df, sheet_name):
         df.to_excel(writer, sheet_name=sheet_name, index=False)
     return output.getvalue()
 
-def process_flipkart_data(sales_file, pm_file, inventory_file, chunk_size=100000):
-    """Process Flipkart data using vectorized chunking for maximum speed and minimum RAM"""
+def process_flipkart_data(sales_file, pm_file, inventory_file, chunk_size=10000):
+    """Process Flipkart data using micro-vectorized chunking for absolute RAM safety"""
     
     # 1. Process Sales Report in Chunks (Vectorized)
     sales_agg = {} # SKU -> Quantity
