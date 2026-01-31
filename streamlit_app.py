@@ -75,50 +75,6 @@ def load_module(file_path, module_dir):
         if module_dir in sys.path:
             sys.path.remove(module_dir)
 
-MODULE_DISPLAY_NAMES = {
-    "amazon": "Amazon",
-    "flipkart": "Flipkart",
-    "reconciliation": "PO Reconciliation",
-    "stockmovement": "Stock Movement",
-    "leakagereconciliation": "Leakage Reconciliation",
-    "system": "System Management",
-}
-
-def get_tool_display_name(filename):
-    """Convert filename to display name."""
-    name = filename.replace(".py", "").replace("_", " ")
-    return " ".join(word.capitalize() for word in name.split())
-
-def render_portal():
-    """Render the main portal landing page."""
-    st.title("📊 Snaphire Analytics Portal")
-    st.markdown("---")
-    
-    # Get all modules
-    modules = sorted([m for m in os.listdir(MODULES_PATH) 
-                     if os.path.isdir(os.path.join(MODULES_PATH, m))])
-    
-    st.subheader("🗂️ Available Modules")
-    
-    cols = st.columns(3)
-    for i, module in enumerate(modules):
-        module_path = os.path.join(MODULES_PATH, module)
-        tools = [f for f in os.listdir(module_path) 
-                if f.endswith(".py") and not f.startswith("__") 
-                and f not in ["mongo_utils.py", "ui_utils.py"]]
-        
-        display_name = MODULE_DISPLAY_NAMES.get(module.lower(), module.title())
-        
-        with cols[i % 3]:
-            with st.expander(f"📁 **{display_name}** ({len(tools)} tools)", expanded=True):
-                for tool in sorted(tools):
-                    tool_display = get_tool_display_name(tool)
-                    tool_url = f"?module={module}&tool={tool}"
-                    st.markdown(f"🔧 [{tool_display}]({tool_url})")
-    
-    st.markdown("---")
-    st.caption("Snaphire Analytics Portal | Built with Streamlit")
-
 if module_name and tool_name:
     # Load the specific tool
     module_path = os.path.join(MODULES_PATH, module_name)
@@ -129,6 +85,6 @@ if module_name and tool_name:
     else:
         st.error(f"Tool not found: {tool_name}")
 else:
-    # Show portal landing page
-    render_portal()
+    # Show default message
+    st.info("Select a tool from the portal to get started.")
 
