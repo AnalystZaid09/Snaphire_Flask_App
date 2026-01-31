@@ -19,6 +19,16 @@ from common.ui_utils import (
 MODULE_NAME = "flipkart"
 TOOL_NAME = "flipkart_sales_report"
 
+def flatten_pivot(pivot_df):
+    """Flatten a pivot table for Excel export by resetting index and flattening columns."""
+    df = pivot_df.copy()
+    # Flatten MultiIndex columns if present
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = ['_'.join(str(c) for c in col).strip('_') for col in df.columns.values]
+    # Reset index to make it a regular DataFrame
+    df = df.reset_index()
+    return df
+
 # ---------- PAGE CONFIG ----------
 st.set_page_config(page_title="Flipkart Sales Analysis", layout="wide")
 apply_professional_style()
@@ -185,7 +195,7 @@ if st.session_state.flip_results is not None:
 
         st.dataframe(pivot, use_container_width=True)
         download_module_report(
-            df=pivot.reset_index(),
+            df=flatten_pivot(pivot),
             module_name=MODULE_NAME,
             report_name="Brand Pivot",
             button_label="⬇️ Download Brand Pivot",
@@ -212,7 +222,7 @@ if st.session_state.flip_results is not None:
 
         st.dataframe(pivot, use_container_width=True)
         download_module_report(
-            df=pivot.reset_index(),
+            df=flatten_pivot(pivot),
             module_name=MODULE_NAME,
             report_name="Manager Pivot",
             button_label="⬇️ Download Manager Pivot",
