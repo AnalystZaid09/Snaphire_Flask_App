@@ -7,15 +7,25 @@ STREAMLIT_PORT=8501
 
 echo "🚀 Starting Snaphire on Railway..."
 echo "📍 External Port: $PORT"
+echo "📍 Internal Flask: $FLASK_PORT"
+echo "📍 Internal Streamlit: $STREAMLIT_PORT"
 
 # 1. Configure Nginx to listen on Railway's $PORT
 echo "🔧 Configuring Nginx..."
+mkdir -p /run/nginx
 cp nginx.conf /etc/nginx/sites-available/default
 sed -i "s/\$PORT/$PORT/g" /etc/nginx/sites-available/default
 
-# 2. Start Nginx
+# 2. Start Nginx directly in background
 echo "🌐 Starting Nginx Proxy..."
-service nginx start
+/usr/sbin/nginx -g "daemon on;"
+
+# Check if Nginx started
+if [ $? -eq 0 ]; then
+    echo "✅ Nginx started successfully"
+else
+    echo "❌ Nginx failed to start"
+fi
 
 # 3. Start Streamlit (Internal)
 echo "🎬 Starting Streamlit Engine on port $STREAMLIT_PORT..."
@@ -31,5 +41,6 @@ python -m streamlit run streamlit_app.py \
     --browser.gatherUsageStats=false &
 
 # 4. Start Flask (Internal via Gunicorn)
+# Use 1 worker to stay within 512MB RAM
 echo "🏗️ Starting Flask Portal on port $FLASK_PORT..."
-gunicorn --bind 0.0.0.0:$FLASK_PORT --timeout 120 index:app
+exec gunicorn --bind 0.0.0.0:$FLASK_PORT --timeout 120 --workers 1 --log-level info index:app
