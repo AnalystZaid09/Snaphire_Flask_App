@@ -37,8 +37,18 @@ st.divider()
 def to_excel(df, sheet_name='Sheet1'):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, sheet_name=sheet_name, index=False)
+        df.to_excel(writer, sheet_name=sheet_name, index=True)
     return output.getvalue()
+
+def flatten_pivot(pivot_df):
+    """Flatten a pivot table for Excel export by resetting index and flattening columns."""
+    df = pivot_df.copy()
+    # Flatten MultiIndex columns if present
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = ['_'.join(str(c) for c in col).strip('_') for col in df.columns.values]
+    # Reset index to make it a regular DataFrame
+    df = df.reset_index()
+    return df
 
 # Initialize session state
 if 'processed' not in st.session_state:
@@ -311,7 +321,7 @@ else:
         
         # Download button with MongoDB logging
         download_module_report(
-            df=brand_pivot.reset_index(),
+            df=flatten_pivot(brand_pivot),
             module_name=MODULE_NAME,
             report_name="RIS Brand Analysis",
             button_label="📥 Download Brand Analysis",
@@ -339,7 +349,7 @@ else:
         
         # Download button with MongoDB logging
         download_module_report(
-            df=fsn_pivot.reset_index(),
+            df=flatten_pivot(fsn_pivot),
             module_name=MODULE_NAME,
             report_name="RIS FSN-Brand Analysis",
             button_label="📥 Download FSN-Brand Analysis",
@@ -378,7 +388,7 @@ else:
         
         # Download button with MongoDB logging
         download_module_report(
-            df=state_pivot.reset_index(),
+            df=flatten_pivot(state_pivot),
             module_name=MODULE_NAME,
             report_name="RIS State Analysis",
             button_label="📥 Download State Analysis",
@@ -406,7 +416,7 @@ else:
         
         # Download button with MongoDB logging
         download_module_report(
-            df=state_brand_pivot.reset_index(),
+            df=flatten_pivot(state_brand_pivot),
             module_name=MODULE_NAME,
             report_name="RIS State-Brand Analysis",
             button_label="📥 Download State-Brand Analysis",
