@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from io import BytesIO
+from common.ui_utils import download_module_report, apply_professional_style, render_header
+
+MODULE_NAME = "flipkart"
 
 # Page configuration
 st.set_page_config(
@@ -272,13 +275,13 @@ else:
         
         st.divider()
         
-        # Download button
-        excel_data = to_excel(st.session_state.sales_report, 'Sales Report')
-        st.download_button(
-            label="📥 Download Sales Report",
-            data=excel_data,
-            file_name="sales_report_with_ris.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        # Download button with MongoDB logging
+        download_module_report(
+            df=st.session_state.sales_report,
+            module_name=MODULE_NAME,
+            report_name="RIS Sales Report",
+            button_label="📥 Download Sales Report",
+            key="dl_ris_sales"
         )
         
         # Display dataframe
@@ -306,13 +309,13 @@ else:
         
         st.divider()
         
-        # Download button
-        excel_data = to_excel(brand_pivot.reset_index(), 'Brand Analysis')
-        st.download_button(
-            label="📥 Download Brand Analysis",
-            data=excel_data,
-            file_name="brand_ris_analysis.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        # Download button with MongoDB logging
+        download_module_report(
+            df=brand_pivot.reset_index(),
+            module_name=MODULE_NAME,
+            report_name="RIS Brand Analysis",
+            button_label="📥 Download Brand Analysis",
+            key="dl_ris_brand"
         )
         
         # Display pivot table
@@ -334,13 +337,13 @@ else:
         
         fsn_pivot = st.session_state.fsn_brand_pivot
         
-        # Download button
-        excel_data = to_excel(fsn_pivot.reset_index(), 'FSN Brand Analysis')
-        st.download_button(
-            label="📥 Download FSN-Brand Analysis",
-            data=excel_data,
-            file_name="fsn_brand_ris_analysis.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        # Download button with MongoDB logging
+        download_module_report(
+            df=fsn_pivot.reset_index(),
+            module_name=MODULE_NAME,
+            report_name="RIS FSN-Brand Analysis",
+            button_label="📥 Download FSN-Brand Analysis",
+            key="dl_ris_fsn_brand"
         )
         
         # Display pivot table
@@ -373,13 +376,13 @@ else:
         
         st.divider()
         
-        # Download button
-        excel_data = to_excel(state_pivot.reset_index(), 'State Analysis')
-        st.download_button(
-            label="📥 Download State Analysis",
-            data=excel_data,
-            file_name="state_ris_analysis.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        # Download button with MongoDB logging
+        download_module_report(
+            df=state_pivot.reset_index(),
+            module_name=MODULE_NAME,
+            report_name="RIS State Analysis",
+            button_label="📥 Download State Analysis",
+            key="dl_ris_state"
         )
         
         # Display pivot table
@@ -401,13 +404,13 @@ else:
         
         state_brand_pivot = st.session_state.state_brand_pivot
         
-        # Download button
-        excel_data = to_excel(state_brand_pivot.reset_index(), 'State Brand Analysis')
-        st.download_button(
-            label="📥 Download State-Brand Analysis",
-            data=excel_data,
-            file_name="state_brand_ris_analysis.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        # Download button with MongoDB logging
+        download_module_report(
+            df=state_brand_pivot.reset_index(),
+            module_name=MODULE_NAME,
+            report_name="RIS State-Brand Analysis",
+            button_label="📥 Download State-Brand Analysis",
+            key="dl_ris_state_brand"
         )
         
         # Display pivot table
