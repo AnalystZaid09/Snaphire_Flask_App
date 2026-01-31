@@ -635,5 +635,5 @@ def main():
     st.markdown('---')
     st.caption('Keep your .env file on the server and do not commit it to source control. When loaded from environment, credentials are not displayed in the UI.')
 
-if __name__ == '__main__':
-    main()
+
+main()
