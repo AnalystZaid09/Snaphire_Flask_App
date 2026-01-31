@@ -193,18 +193,41 @@ if zip_files and pm_file:
     with col2:
         st.info(f"📊 Total Combined (Unfiltered): **{unfiltered_count:,}** records")
     
+    with st.spinner("Generating analytic summaries for database dump..."):
+        # Brand pivot (Simple version for DB)
+        db_brand_pivot = pd.pivot_table(
+            processed_df,
+            index='Brand',
+            values=['Quantity', 'Invoice Amount'],
+            aggfunc='sum',
+            observed=False
+        ).sort_values(by='Quantity', ascending=False).reset_index()
+        
+        # ASIN pivot (Simple version for DB)
+        db_asin_pivot = pd.pivot_table(
+            processed_df,
+            index=['Asin', 'Brand'],
+            values=['Quantity', 'Invoice Amount'],
+            aggfunc='sum',
+            observed=False
+        ).sort_values(by='Quantity', ascending=False).reset_index()
+        gc.collect()
+
     # Save to MongoDB
     try:
-        # Auto-save for general tracking
+        # Auto-save all major reports to MongoDB registry
         auto_save_generated_reports(
             reports={
-                "Amazon Month/Quarter Analysis": processed_df
+                "Monthly Analysis (Filtered)": processed_df,
+                "Monthly Analysis (Unfiltered)": unfiltered_combined_df,
+                "Brand-wise Summary": db_brand_pivot,
+                "ASIN-wise Summary": db_asin_pivot
             },
             module_name=MODULE_NAME,
             tool_name=TOOL_NAME
         )
         
-        # Also keep reconciliation specific dump but in 'amazon' collection
+        # Also keep reconciliation specific dump for compatibility
         save_reconciliation_report(
             collection_name=MODULE_NAME,
             invoice_no=f"MON_QTR_{dt.now().strftime('%Y%m%d_%H%M%S')}",
@@ -217,13 +240,17 @@ if zip_files and pm_file:
             line_items_data=processed_df,
             metadata={
                 "report_type": "amazon_month_qtr_wise",
-                "tool_name": TOOL_NAME
+                "tool_name": TOOL_NAME,
+                "dataset": "comprehensive_dump"
             }
         )
     except Exception as e:
         st.sidebar.error(f"⚠️ Database Save Error: {str(e)}")
         import logging
         logging.getLogger(__name__).error(f"Error in Month/Qtr save block: {e}")
+    
+    del db_brand_pivot, db_asin_pivot
+    gc.collect()
     
     # Show transaction type breakdown in expander for debugging
     with st.expander("🔍 Transaction Type Breakdown"):
