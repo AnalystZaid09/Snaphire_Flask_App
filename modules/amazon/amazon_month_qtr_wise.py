@@ -24,18 +24,29 @@ st.set_page_config(page_title="Month and Quarter Wise Sales Data Analysis", layo
 apply_professional_style()
 
 # Helper function to create download link (base64 approach - works reliably on Streamlit Cloud)
-def create_download_link(df, filename, link_text):
-    """Generate a download link for a DataFrame as Excel file using base64 encoding.
-    This approach doesn't trigger Streamlit reruns and works reliably on Streamlit Cloud."""
+def create_download_link(df, filename, link_text, is_csv=False):
+    """Generate a download link for a DataFrame using base64 encoding.
+    Uses CSV for large files to save memory, Excel for smaller ones."""
     try:
-        output = io.BytesIO()
-        df.to_excel(output, index=False, engine='openpyxl')
-        output.seek(0)
-        b64 = base64.b64encode(output.getvalue()).decode()
-        href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="{filename}" style="display: inline-block; padding: 0.5rem 1rem; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">📥 {link_text}</a>'
-        return href
+        gc.collect()
+        if is_csv or len(df) > 20000:
+            # Use CSV for large files to save memory
+            csv = df.to_csv(index=False)
+            b64 = base64.b64encode(csv.encode()).decode()
+            href = f'<a href="data:file/csv;base64,{b64}" download="{filename.replace(".xlsx", ".csv")}" style="display: inline-block; padding: 0.5rem 1rem; background-color: #2196F3; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">📥 {link_text.replace("Excel", "CSV")}</a>'
+            return href
+        else:
+            # Excel for smaller ones
+            output = io.BytesIO()
+            df.to_excel(output, index=False, engine='openpyxl')
+            output.seek(0)
+            b64 = base64.b64encode(output.getvalue()).decode()
+            href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="{filename}" style="display: inline-block; padding: 0.5rem 1rem; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">📥 {link_text}</a>'
+            return href
     except Exception as e:
         return f'<p style="color: red;">Error creating download: {e}</p>'
+    finally:
+        gc.collect()
 
 render_header("Month and Quarter Wise Sales Data Analysis", "Analyze shipment data by month, quarter, and year with YoY comparison")
 
@@ -488,11 +499,18 @@ if zip_files and pm_file:
         )
         
         if selected_columns:
-            display_df = filtered_df[selected_columns].copy()
-            st.dataframe(display_df, width='stretch', height=600)
+            display_df = filtered_df[selected_columns]
             
-            # Download link - Excel format (base64 approach for Streamlit Cloud)
-            st.markdown(create_download_link(display_df, f"filtered_data_{time_period}.xlsx", "Download Filtered Data Excel"), unsafe_allow_html=True)
+            # UI Row Cap for stability
+            if len(display_df) > 5000:
+                st.warning(f"⚠️ **Showing first 5,000 rows out of {len(display_df):,}** to prevent server crash. Use the button below to download the FULL dataset.")
+                st.dataframe(display_df.head(5000), width='stretch', height=600)
+            else:
+                st.dataframe(display_df, width='stretch', height=600)
+            
+            # Download link - Full Data
+            st.markdown(create_download_link(display_df, f"filtered_data_{time_period}.csv", "Download Filtered Data (CSV)", is_csv=True), unsafe_allow_html=True)
+            gc.collect()
         else:
             st.warning("Please select at least one column to display")
     
@@ -522,11 +540,18 @@ if zip_files and pm_file:
         )
         
         if selected_columns_unfiltered:
-            display_unfiltered_df = unfiltered_combined_df[selected_columns_unfiltered].copy()
-            st.dataframe(display_unfiltered_df, width='stretch', height=600)
+            display_unfiltered_df = unfiltered_combined_df[selected_columns_unfiltered]
             
-            # Download link - Excel format (base64 approach for Streamlit Cloud)
-            st.markdown(create_download_link(display_unfiltered_df, f"combined_unfiltered_data_{time_period}.xlsx", "Download Combined (Unfiltered) Data Excel"), unsafe_allow_html=True)
+            # UI Row Cap for stability
+            if len(display_unfiltered_df) > 5000:
+                st.warning(f"⚠️ **Showing first 5,000 rows out of {len(display_unfiltered_df):,}** to prevent server crash. Use the button below to download the FULL dataset.")
+                st.dataframe(display_unfiltered_df.head(5000), width='stretch', height=600)
+            else:
+                st.dataframe(display_unfiltered_df, width='stretch', height=600)
+            
+            # Download link - Full Data
+            st.markdown(create_download_link(display_unfiltered_df, f"combined_unfiltered_data_{time_period}.csv", "Download Combined (Unfiltered) Data (CSV)", is_csv=True), unsafe_allow_html=True)
+            gc.collect()
         else:
             st.warning("Please select at least one column to display")
 
