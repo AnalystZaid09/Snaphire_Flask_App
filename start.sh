@@ -38,10 +38,13 @@ python -m streamlit run streamlit_app.py \
     --server.baseUrlPath="/st-engine" \
     --browser.gatherUsageStats=false &
 
+# Give Streamlit time to start before Nginx/Gunicorn
+sleep 5
+
 # 4. Start Flask (Internal via Gunicorn)
-# Limit to 1 worker and 2 threads to save RAM for Streamlit
+# Limit to 1 worker and 1 thread to save RAM for Streamlit
 echo "🏗️ Starting Flask Portal on port $FLASK_PORT..."
-exec gunicorn --bind 0.0.0.0:$FLASK_PORT \
+gunicorn --bind 0.0.0.0:$FLASK_PORT \
      --workers 1 \
      --threads 1 \
      --timeout 600 \
