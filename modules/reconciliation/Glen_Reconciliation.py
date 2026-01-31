@@ -113,7 +113,7 @@ def extract_pdf_complete_data(pdf_file):
     for invoice in result.documents:
         fields = invoice.fields
         
-        invoice_summary['Invoice_No'] = fields.get("InvoiceId").content if fields.get("InvoiceId") else "N/A"
+        invoice_summary['Invoice_No'] = getattr(fields.get("InvoiceId"), 'value', None) or getattr(fields.get("InvoiceId"), 'content', None) or "N/A"
         sub_total = clean_num(fields.get("SubTotal"))
         grand_total = clean_num(fields.get("InvoiceTotal"))
         total_tax_field = clean_num(fields.get("TotalTax"))
@@ -128,11 +128,14 @@ def extract_pdf_complete_data(pdf_file):
         })
 
         items_field = fields.get("Items")
-        if items_field and items_field.value_array:
-            for item in items_field.value_array:
-                val = item.value_object
+        value_array = getattr(items_field, "value", None) or getattr(items_field, "value_array", None) if items_field else None
+        
+        if value_array:
+            for item in value_array:
+                val = getattr(item, "value", None) or getattr(item, "value_object", None) or {}
                 
-                raw_desc = val.get("Description").content if val.get("Description") else ""
+                desc_obj = val.get("Description")
+                raw_desc = getattr(desc_obj, 'content', '') if desc_obj else ""
                 qty_extracted, desc_extracted = parse_description_and_qty(raw_desc)
                 
                 if val.get("Quantity"):
@@ -236,19 +239,24 @@ def reconcile_with_numeric_logic(excel_df, pdf_df, summary, tolerance=7.0):
     return pd.DataFrame(reconciliation_results), global_validation
 
 # Main app layout
+st.set_page_config(page_title="Glen Reconciliation", layout="wide")
+apply_professional_style()
+render_header("Glen Reconciliation Tool", "PDF Invoice vs Excel (With Numeric Logic Matching)")
+
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("📁 Upload Excel File")
+    st.markdown("### 📁 Upload Excel File")
     excel_file = st.file_uploader("Choose Excel file", type=['xlsx', 'xls'], key="excel")
 
 with col2:
-    st.subheader("📄 Upload PDF Invoice")
+    st.markdown("### 📄 Upload PDF Invoice")
     pdf_file = st.file_uploader("Choose PDF file", type=['pdf'], key="pdf")
 
+st.sidebar.markdown("---")
 tolerance = st.sidebar.slider("Tolerance Level (₹)", 0.0, 20.0, 7.0, 0.5)
 
-if st.button("🔍 Run Reconciliation", type="primary", use_container_width=True):
+if st.button("🔍 Run Reconciliation", type="primary"):
     if excel_file is None or pdf_file is None:
         st.error("⚠️ Please upload both Excel and PDF files.")
     else:
