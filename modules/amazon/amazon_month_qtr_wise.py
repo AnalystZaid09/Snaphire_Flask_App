@@ -220,8 +220,10 @@ if zip_files and pm_file:
                 "tool_name": TOOL_NAME
             }
         )
-    except Exception:
-        pass
+    except Exception as e:
+        st.sidebar.error(f"⚠️ Database Save Error: {str(e)}")
+        import logging
+        logging.getLogger(__name__).error(f"Error in Month/Qtr save block: {e}")
     
     # Show transaction type breakdown in expander for debugging
     with st.expander("🔍 Transaction Type Breakdown"):

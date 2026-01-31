@@ -579,6 +579,7 @@ def register_report_info(
             "metadata": metadata or {}
         }
         
+        document = _serialize_for_mongo(document)
         registry.insert_one(document)
         logger.info(f"📋 Report registered: {module_name}/{tool_name}/{report_name}")
         return True
@@ -657,6 +658,7 @@ def save_report_with_tracking(
         }
         
         # Insert to module collection
+        document = _serialize_for_mongo(document)
         result = collection.insert_one(document)
         report_id = str(result.inserted_id)
         
