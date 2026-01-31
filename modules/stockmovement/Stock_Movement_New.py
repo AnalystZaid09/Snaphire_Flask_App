@@ -6,7 +6,8 @@ from common.ui_utils import (
     get_download_filename, 
     render_header,
     download_module_report,
-    to_excel
+    to_excel,
+    auto_save_generated_reports
 )
 
 # Module name for MongoDB collection
@@ -238,6 +239,17 @@ if all([qwtt_inventory_file, amazon_stock_file, flipkart_business_file,
         amazon_qwtt_inward_filter = amazon_qwtt_inward[
             amazon_qwtt_inward["Amazon Stock"] == 0
         ].reset_index(drop=True)
+
+        # Auto-save all generated reports to MongoDB
+        auto_save_generated_reports(
+            reports={
+                "Amazon Business Pivot": amazon_business_pivot,
+                "Flipkart Business Pivot": Flipkart_Business_Pivot,
+                "Flipkart QWTT Inward": flipkart_qwtt_inward,
+                "Amazon QWTT Inward": amazon_qwtt_inward
+            },
+            module_name=MODULE_NAME
+        )
     
     # Display tabs
     tab1, tab2, tab3, tab4 = st.tabs([
