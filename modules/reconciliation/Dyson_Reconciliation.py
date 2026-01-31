@@ -972,5 +972,5 @@ def main():
             st.json(raw_doc_dict)
 
 
-if __name__ == "__main__":
-    main()
+
+main()
