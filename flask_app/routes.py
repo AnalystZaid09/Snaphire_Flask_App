@@ -162,9 +162,14 @@ def tool_page(module_name, tool_name):
         })
     
     # Smart URL detection: Use relative proxy on Render, localhost for Dev
-    default_url = "/st-engine" if os.getenv("RENDER") or os.getenv("DOCKER_ENV") else "http://localhost:8501"
+    default_url = "/st-engine/" if os.getenv("RENDER") or os.getenv("DOCKER_ENV") else "http://localhost:8501/"
     base_url = os.getenv("STREAMLIT_URL", default_url)
-    streamlit_url = f"{base_url}/?module={module_name}&tool={tool_name}"
+    
+    # Ensure base_url ends with / if it doesn't already
+    if not base_url.endswith('/'):
+        base_url += '/'
+        
+    streamlit_url = f"{base_url}?module={module_name}&tool={tool_name}"
     
     return render_template('tool.html',
                          module_name=module_name,

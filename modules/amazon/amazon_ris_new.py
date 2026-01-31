@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import re
+import gc
 from io import BytesIO
 from common.ui_utils import (
     apply_professional_style, 
@@ -388,8 +389,12 @@ with st.sidebar:
                         
                         st.success("✅ Data processed successfully! Switch tabs to view reports.")
                         
+                        # Aggressive cleanup
+                        gc.collect()
+                        
                     except Exception as e:
                         st.error(f"❌ Error processing files: {str(e)}")
+                        gc.collect()
             else:
                 st.warning("⚠️ Please upload all three files first!")
     
@@ -631,8 +636,12 @@ with st.sidebar:
                         
                         st.success("✅ Manager data processed successfully! Switch tabs to view reports.")
                         
+                        # Aggressive cleanup
+                        gc.collect()
+                        
                     except Exception as e:
                         st.error(f"❌ Error processing files: {str(e)}")
+                        gc.collect()
             else:
                 st.warning("⚠️ Please upload both RIS Week file and PM file!")
 
