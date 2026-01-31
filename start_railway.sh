@@ -13,8 +13,9 @@ echo "📍 Internal Streamlit: $STREAMLIT_PORT"
 # 1. Configure Nginx to listen on Railway's $PORT
 echo "🔧 Configuring Nginx..."
 mkdir -p /run/nginx
-cp nginx.conf /etc/nginx/sites-available/default
-sed -i "s/\$PORT/$PORT/g" /etc/nginx/sites-available/default
+# Overwrite the MAIN nginx.conf with our self-contained version
+cp nginx.conf /etc/nginx/nginx.conf
+sed -i "s/\$PORT/$PORT/g" /etc/nginx/nginx.conf
 
 # 2. Start Nginx directly in background
 echo "🌐 Starting Nginx Proxy..."
@@ -36,6 +37,7 @@ python -m streamlit run streamlit_app.py \
     --server.headless=true \
     --server.enableXsrfProtection=false \
     --server.enableCORS=false \
+    --server.enableWebsocketCompression=false \
     --server.maxUploadSize=2000 \
     --server.baseUrlPath="/st-engine" \
     --browser.gatherUsageStats=false &
