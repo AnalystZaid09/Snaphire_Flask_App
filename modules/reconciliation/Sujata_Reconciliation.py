@@ -19,7 +19,10 @@ MODULE_NAME = "reconciliation"
 
 import streamlit as st
 import pandas as pd
+import logging
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
@@ -794,5 +797,6 @@ def main():
                 key="dl_sujata_summary"
             )
 
-if __name__ == "__main__":
-    main()
+# Always call main for Streamlit execution
+main()
+
