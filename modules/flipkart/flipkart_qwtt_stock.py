@@ -1,6 +1,7 @@
-# cl.py
 import streamlit as st
 import pandas as pd
+import numpy as np
+import gc
 from io import BytesIO
 from datetime import datetime
 from common.ui_utils import (
@@ -147,15 +148,41 @@ def process_flipkart_data(sales_df, pm_df, inventory_df):
 # Main app logic
 if sales_file and pm_file and inventory_file and generate_button:
     try:
+        container = st.container()
         with st.spinner("Processing files..."):
-            # Read files
-            sales_df = pd.read_csv(sales_file)
-            pm_df = pd.read_excel(pm_file)
-            inventory_df = pd.read_csv(inventory_file)
+            # 1. Read Sales File (Optimized)
+            sales_df = pd.read_csv(
+                sales_file, 
+                usecols=["Marketplace", "SKU", "Quantity"],
+                dtype={"Marketplace": "category", "SKU": "str", "Quantity": "float32"}
+            )
+            
+            # 2. Read PM File (Optimized)
+            pm_cols = ["EasycomSKU", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager", "Product Name", "CP"]
+            if pm_file.name.endswith('.csv'):
+                pm_df = pd.read_csv(pm_file, usecols=pm_cols)
+            else:
+                pm_df = pd.read_excel(pm_file, usecols=pm_cols)
+            pm_df = pm_df.drop_duplicates(subset=["EasycomSKU"])
+            
+            # 3. Read Inventory File (Optimized)
+            inventory_df = pd.read_csv(
+                inventory_file,
+                usecols=["sku", "old_quantity"],
+                dtype={"sku": "str", "old_quantity": "float32"}
+            )
+            
+            gc.collect()
         
         # Process data
         with st.spinner("Generating reports..."):
             sales_report, inventory_report = process_flipkart_data(sales_df, pm_df, inventory_df)
+            
+            # Clear raw dataframes to save RAM
+            del sales_df
+            del pm_df
+            del inventory_df
+            gc.collect()
         
         st.success("✅ Reports generated successfully!")
         
@@ -172,16 +199,21 @@ if sales_file and pm_file and inventory_file and generate_button:
             with col2:
                 st.metric("Total Units Sold", int(sales_report["Sales Qty"].sum()))
             with col3:
-                st.metric("Total Sales Value", f"₹{sales_report['CP as Per Sales Qty'].sum():,.2f}")
+                sales_total_val = sales_report['CP as Per Sales Qty'].sum()
+                st.metric("Total Sales Value", f"₹{sales_total_val:,.2f}")
             with col4:
-                avg_cp = sales_report['CP as Per Sales Qty'].sum() / sales_report['Sales Qty'].sum()
+                sales_qty_total = sales_report['Sales Qty'].sum()
+                avg_cp = sales_total_val / sales_qty_total if sales_qty_total > 0 else 0
                 st.metric("Avg CP per Unit", f"₹{avg_cp:,.2f}")
             
             st.divider()
             
-            # Add grand total to display
-            sales_report_with_total = add_grand_total(sales_report)
+            # Add grand total to display (limited to 5000 rows for stability)
+            display_df = sales_report.head(5000)
+            if len(sales_report) > 5000:
+                st.warning(f"⚠️ Showing first 5,000 products of {len(sales_report):,} for performance.")
             
+            sales_report_with_total = add_grand_total(display_df)
             st.dataframe(sales_report_with_total, use_container_width=True, height=500)
             
             # Download with module-specific saving
@@ -211,9 +243,12 @@ if sales_file and pm_file and inventory_file and generate_button:
             
             st.divider()
             
-            # Add grand total to display
-            inventory_report_with_total = add_grand_total(inventory_report)
-            
+            # Add grand total to display (limited to 5000 rows for stability)
+            display_inv_df = inventory_report.head(5000)
+            if len(inventory_report) > 5000:
+                st.warning(f"⚠️ Showing first 5,000 SKUs of {len(inventory_report):,} for performance.")
+                
+            inventory_report_with_total = add_grand_total(display_inv_df)
             st.dataframe(inventory_report_with_total, use_container_width=True, height=500)
             
             # Download with module-specific saving

@@ -24,7 +24,9 @@ def start_streamlit():
          "--server.headless=true",
          "--server.enableXsrfProtection=false",
          "--server.enableCORS=false",
-         "--server.maxUploadSize=2000"],
+         "--server.enableWebsocketCompression=false",
+         "--server.maxUploadSize=2000",
+         "--server.maxMessageSize=200"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
