@@ -88,12 +88,13 @@ def extract_pdf_data(pdf_file, excel_material_codes):
         # Extract InvoiceId
         inv_id_field = invoice.fields.get("InvoiceId")
         if inv_id_field:
-             summary["Invoice_No"] = inv_id_field.value_string or inv_id_field.content
+             summary["Invoice_No"] = getattr(inv_id_field, 'value', None) or getattr(inv_id_field, 'value_string', None) or getattr(inv_id_field, 'content', None)
 
         items = invoice.fields.get("Items")
-        if items and items.value_array:
-            for item in items.value_array:
-                val = item.value_object
+        value_array = getattr(items, "value", None) or getattr(items, "value_array", None) if items else None
+        if value_array:
+            for item in value_array:
+                val = getattr(item, "value", None) or getattr(item, "value_object", None) or {}
                 p_code_field = val.get("ProductCode")
                 
                 if not p_code_field or not p_code_field.content:
@@ -167,20 +168,25 @@ if pdf_upload and excel_upload:
             st.subheader("Item-wise Comparison")
             st.dataframe(comp_df[['Material Code', 'Total_PDF', 'Total_EXCEL', 'Status']], use_container_width=True)
 
-            # Export
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                comp_df[['Material Code', 'Total_EXCEL', 'Total_PDF', 'Status']].to_excel(writer, sheet_name='Item_Comparison', index=False)
-                summary_results.to_excel(writer, sheet_name='Grand_Totals', index=False)
-            
-            # Use get_download_filename for the report
+            # Use download_module_report for proper MongoDB logging
             inv_no = pdf_summary['Invoice_No'] if pdf_summary['Invoice_No'] else "UnknownInvoice"
-            st.download_button(
-                label="📥 Download Reconciliation Report",
-                data=output.getvalue(),
-                file_name=get_download_filename(f"Tramontina_Recon_{inv_no}"),
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+            col_dl1, col_dl2 = st.columns(2)
+            with col_dl1:
+                download_module_report(
+                    df=comp_df[['Material Code', 'Total_EXCEL', 'Total_PDF', 'Status']],
+                    module_name=MODULE_NAME,
+                    report_name=f"Tramontina_Detailed_{inv_no}",
+                    button_label="📥 Download Detailed Report",
+                    key="dl_tramontina_detailed"
+                )
+            with col_dl2:
+                download_module_report(
+                    df=summary_results,
+                    module_name=MODULE_NAME,
+                    report_name=f"Tramontina_Summary_{inv_no}",
+                    button_label="📥 Download Summary",
+                    key="dl_tramontina_summary"
+                )
 
             # Save to MongoDB
             try:
