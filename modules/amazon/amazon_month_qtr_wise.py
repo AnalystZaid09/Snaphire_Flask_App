@@ -414,7 +414,7 @@ if zip_files and pm_file:
             st.metric("Unique Brands", f"{filtered_df['Brand'].nunique():,}")
         
         st.subheader("Monthly Trend")
-        monthly_trend = filtered_df.groupby('Month_Year').agg({
+        monthly_trend = filtered_df.groupby('Month_Year', observed=False).agg({
             'Quantity': 'sum',
             'Invoice Amount': 'sum'
         }).reset_index()
@@ -440,7 +440,8 @@ if zip_files and pm_file:
             index='Brand',
             values=['Quantity', 'Invoice Amount'],
             aggfunc='sum',
-            margins=False
+            margins=False,
+            observed=False
         )
         brand_pivot = brand_pivot.sort_values(by='Quantity', ascending=False)
         brand_pivot.loc['Grand Total'] = brand_pivot.sum()
@@ -463,7 +464,8 @@ if zip_files and pm_file:
             filtered_df,
             index=['Asin', 'Brand'],
             values=['Quantity', 'Invoice Amount'],
-            aggfunc='sum'
+            aggfunc='sum',
+            observed=False
         )
         asin_pivot = asin_pivot.sort_values(by='Quantity', ascending=False)
         
@@ -598,7 +600,8 @@ if zip_files and pm_file:
                     current_year_data,
                     index='Brand',
                     values=['Quantity', 'Invoice Amount'],
-                    aggfunc='sum'
+                    aggfunc='sum',
+                    observed=False
                 ).reset_index()
                 current_brand_pivot.columns = ['Brand', f'Invoice Amount ({current_year})', f'Quantity ({current_year})']
                 
@@ -606,8 +609,10 @@ if zip_files and pm_file:
                     previous_year_data,
                     index='Brand',
                     values=['Quantity', 'Invoice Amount'],
-                    aggfunc='sum'
+                    aggfunc='sum',
+                    observed=False
                 ).reset_index()
+                gc.collect()
                 previous_brand_pivot.columns = ['Brand', f'Invoice Amount ({previous_year})', f'Quantity ({previous_year})']
                 
                 # Merge the two pivots
@@ -739,7 +744,8 @@ if zip_files and pm_file:
                     current_year_data_asin,
                     index=['Asin', 'Brand'],
                     values=['Quantity', 'Invoice Amount'],
-                    aggfunc='sum'
+                    aggfunc='sum',
+                    observed=False
                 ).reset_index()
                 current_asin_pivot.columns = ['Asin', 'Brand', f'Invoice Amount ({current_year_asin})', f'Quantity ({current_year_asin})']
                 
@@ -747,8 +753,10 @@ if zip_files and pm_file:
                     previous_year_data_asin,
                     index=['Asin', 'Brand'],
                     values=['Quantity', 'Invoice Amount'],
-                    aggfunc='sum'
+                    aggfunc='sum',
+                    observed=False
                 ).reset_index()
+                gc.collect()
                 previous_asin_pivot.columns = ['Asin', 'Brand', f'Invoice Amount ({previous_year_asin})', f'Quantity ({previous_year_asin})']
                 
                 # Merge the two pivots

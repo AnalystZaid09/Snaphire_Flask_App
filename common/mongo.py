@@ -228,6 +228,18 @@ if MONGO_CONNECTED:
     ensure_indexes()
 
 
+from datetime import datetime, date
+
+def _serialize_for_mongo(obj):
+    """Recursively convert datetime.date objects to datetime.datetime for MongoDB."""
+    if isinstance(obj, dict):
+        return {k: _serialize_for_mongo(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_serialize_for_mongo(item) for item in obj]
+    elif isinstance(obj, date) and not isinstance(obj, datetime):
+        return datetime(obj.year, obj.month, obj.day)
+    return obj
+
 def log_report_download(user_email: str, module: str, report_name: str, filename: str,
                         df_data=None, row_count: int = 0, col_count: int = 0, 
                         file_size: int = 0, metadata: dict = None, sheet_name: str = None):
@@ -283,7 +295,7 @@ def log_report_download(user_email: str, module: str, report_name: str, filename
         
         # Only add report_data if it exists and is not too large
         if report_data:
-            document["report_data"] = report_data
+            document["report_data"] = _serialize_for_mongo(report_data)
         
         downloads_col.insert_one(document)
         logger.info(f"✅ Report logged: {report_name} ({filename})")
@@ -382,6 +394,7 @@ def save_module_report(module_name: str, report_name: str, df_data=None,
             "downloads": []
         }
         
+        document = _serialize_for_mongo(document)
         result = collection.insert_one(document)
         return str(result.inserted_id)
     except Exception as e:
@@ -415,6 +428,7 @@ def save_reconciliation_report(collection_name: str, invoice_no: str,
             "type": "reconciliation"
         }
         
+        document = _serialize_for_mongo(document)
         result = collection.insert_one(document)
         logger.info(f"✅ Reconciliation report dumped: {invoice_no}")
         return str(result.inserted_id)
