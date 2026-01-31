@@ -386,8 +386,7 @@ with st.sidebar:
                         # Auto-save all generated reports to MongoDB
                         auto_save_generated_reports(results, MODULE_NAME, tool_name=TOOL_NAME)
                         
-                        st.success("✅ Data processed successfully!")
-                        st.rerun()  # Rerun to display results in tabs
+                        st.success("✅ Data processed successfully! Switch tabs to view reports.")
                         
                     except Exception as e:
                         st.error(f"❌ Error processing files: {str(e)}")
@@ -630,8 +629,7 @@ with st.sidebar:
                         # Auto-save all generated reports to MongoDB
                         auto_save_generated_reports(manager_results, MODULE_NAME, tool_name=TOOL_NAME)
                         
-                        st.success("✅ Manager data processed successfully!")
-                        st.rerun()  # Rerun to display results in tabs
+                        st.success("✅ Manager data processed successfully! Switch tabs to view reports.")
                         
                     except Exception as e:
                         st.error(f"❌ Error processing files: {str(e)}")
