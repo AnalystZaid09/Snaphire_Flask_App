@@ -29,6 +29,7 @@ export RENDER=true
 export RAILWAY_ENVIRONMENT=production
 python -m streamlit run streamlit_app.py \
     --server.port=$STREAMLIT_PORT \
+    --server.address=127.0.0.1 \
     --server.headless=true \
     --server.enableXsrfProtection=false \
     --server.enableCORS=false \
