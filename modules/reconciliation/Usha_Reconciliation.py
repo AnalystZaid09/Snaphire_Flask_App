@@ -101,10 +101,11 @@ def extract_invoice(pdf_bytes):
     # ---------------- ITEMS ----------------
     items = []
     items_field = fields.get("Items")
+    value_array = getattr(items_field, "value", None) or getattr(items_field, "value_array", None) if items_field else None
 
-    if items_field and items_field.value_array:
-        for item in items_field.value_array:
-            obj = item.value_object or {}
+    if value_array:
+        for item in value_array:
+            obj = getattr(item, "value", None) or getattr(item, "value_object", None) or {}
 
             items.append({
                 "description": field_text(obj.get("Description")),
@@ -124,8 +125,9 @@ def extract_invoice(pdf_bytes):
     }
 
     tax_field = fields.get("TaxDetails")
-    if tax_field and tax_field.value_array:
-        for t in tax_field.value_array:
+    value_array_tax = getattr(tax_field, "value", None) or getattr(tax_field, "value_array", None) if tax_field else None
+    if value_array_tax:
+        for t in value_array_tax:
             name = (t.content or "").lower()
             amt = safe_tax_amount(t)
             if amt == 0:
@@ -307,13 +309,29 @@ if st.button("Run Reconciliation"):
             "Grand Total Difference": round(invoice["invoice_total"] - po_df["line_total_po"].sum(), 2)
         })
 
-        excel = build_reconciliation_excel(comp_df, invoice, po_df)
-        st.download_button(
-            label="📥 Download Excel Report",
-            data=excel.getvalue(),
-            file_name=get_download_filename(f"reconciliation_{pdf.name.replace('.pdf','')}.xlsx"),
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        # Use download_module_report for proper MongoDB logging
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            download_module_report(
+                df=comp_df,
+                module_name=MODULE_NAME,
+                report_name=f"Usha_Detailed_{pdf.name.replace('.pdf','')}",
+                button_label="📥 Download Detailed Report",
+                key=f"dl_usha_detailed_{pdf.name}"
+            )
+        with col_dl2:
+            summary_df = pd.DataFrame([
+                {"Metric": "Invoice_Total", "Value": invoice["invoice_total"]},
+                {"Metric": "PO_Total", "Value": po_df["line_total_po"].sum()},
+                {"Metric": "GST_Diff", "Value": round(invoice["tax"]["total"] - po_df["included_tax_po"].sum(), 2)}
+            ])
+            download_module_report(
+                df=summary_df,
+                module_name=MODULE_NAME,
+                report_name=f"Usha_Summary_{pdf.name.replace('.pdf','')}",
+                button_label="📥 Download Summary",
+                key=f"dl_usha_summary_{pdf.name}"
+            )
 
         # Save to MongoDB
         try:

@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from common.ui_utils import apply_professional_style, render_header, download_module_report
-from common.mongo import save_and_track_report
+from common.mongo import save_reconciliation_report
 
 MODULE_NAME = "reconciliation"
 
@@ -103,14 +103,15 @@ def extract_pdf_data(file_bytes, endpoint, api_key):
         
         for invoice in result.documents:
             items_field = invoice.fields.get("Items")
-            if items_field and items_field.value_array:
-                for item in items_field.value_array:
-                    val = item.value_object
+            value_array = getattr(items_field, "value", None) or getattr(items_field, "value_array", None) if items_field else None
+            if value_array:
+                for item in value_array:
+                    val = getattr(item, "value", None) or getattr(item, "value_object", None) or {}
                     
                     p_code_obj = val.get("ProductCode")
                     desc_obj = val.get("Description")
                     
-                    if not p_code_obj or not p_code_obj.content.strip():
+                    if not p_code_obj or not getattr(p_code_obj, 'content', '').strip():
                         continue
                     
                     p_code = p_code_obj.content.strip()
@@ -295,48 +296,24 @@ if st.button("🔍 Start Reconciliation", type="primary", disabled=not (pdf_file
         
         st.subheader("💾 Download Report")
         
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            display_table.to_excel(writer, sheet_name='Reconciliation', index=False)
-            
-            summary_data = pd.DataFrame({
-                'Metric': [
-                    'Total Items', 
-                    'Matched Items', 
-                    'Accuracy',
-                    'PDF Total Quantity',
-                    'Excel Total Quantity',
-                    'Quantity Variance',
-                    'PDF Total Tax',
-                    'Excel Total Tax',
-                    'Tax Variance',
-                    'PDF Grand Total', 
-                    'Excel Grand Total', 
-                    'Grand Total Variance'
-                ],
-                'Value': [
-                    len(comparison_df),
-                    len(comparison_df[(comparison_df['Qty_Match']) & (comparison_df['Tax_Status']) & (comparison_df['Total_Match'])]),
-                    f"{accuracy:.2f}%",
-                    f"{pdf_df['Qty_PDF'].sum():.0f}",
-                    f"{excel_df['Qty_EXCEL'].sum():.0f}",
-                    f"{pdf_df['Qty_PDF'].sum() - excel_df['Qty_EXCEL'].sum():.0f}",
-                    f"₹{pdf_df['Tax_PDF'].sum():,.2f}",
-                    f"₹{excel_df['Tax_EXCEL'].sum():,.2f}",
-                    f"₹{pdf_df['Tax_PDF'].sum() - excel_df['Tax_EXCEL'].sum():,.2f}",
-                    f"₹{pdf_totals['Grand_Total']:,.2f}",
-                    f"₹{excel_df['Total_EXCEL'].sum():,.2f}",
-                    f"₹{pdf_totals['Grand_Total'] - excel_df['Total_EXCEL'].sum():,.2f}"
-                ]
-            })
-            summary_data.to_excel(writer, sheet_name='Summary', index=False)
-        
-        st.download_button(
-            label="📥 Download Excel Report",
-            data=output.getvalue(),
-            file_name="reconciliation_report.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        # Use download_module_report for proper MongoDB logging
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            download_module_report(
+                df=display_table,
+                module_name=MODULE_NAME,
+                report_name=f"Wonderchef_Detailed_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                button_label="📥 Download Detailed Report",
+                key="dl_wonderchef_detailed"
+            )
+        with col_dl2:
+            download_module_report(
+                df=summary_data,
+                module_name=MODULE_NAME,
+                report_name=f"Wonderchef_Summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                button_label="📥 Download Summary",
+                key="dl_wonderchef_summary"
+            )
 
 st.markdown("---")
 st.markdown("Built with Streamlit | Powered by Azure Document Intelligence")
