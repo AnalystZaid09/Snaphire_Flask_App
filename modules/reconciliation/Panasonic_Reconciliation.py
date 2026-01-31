@@ -257,6 +257,7 @@ def parse_pdf_with_azure(file_bytes, endpoint, key):
         full_text = "\n".join(parts)
     cgst, sgst, igst = extract_gst_amounts(full_text)
     items = []
+    invoice_id = None
     if getattr(result, "documents", None):
         docs = result.documents
         if docs:
@@ -265,7 +266,7 @@ def parse_pdf_with_azure(file_bytes, endpoint, key):
                  inv_id_field = doc0.fields.get("InvoiceId")
                  if inv_id_field:
                      # Handle both old and new SDK versions
-                     header["InvoiceId"] = getattr(inv_id_field, 'value', None) or getattr(inv_id_field, 'value_string', None) or getattr(inv_id_field, 'content', None)
+                     invoice_id = getattr(inv_id_field, 'value', None) or getattr(inv_id_field, 'value_string', None) or getattr(inv_id_field, 'content', None)
 
             items_field = doc0.fields.get("Items") if getattr(doc0, "fields", None) else None
             value_array = getattr(items_field, "value", None) or getattr(items_field, "value_array", None) if items_field else None
@@ -301,6 +302,7 @@ def parse_pdf_with_azure(file_bytes, endpoint, key):
     if not items:
         items = extract_items_from_text(full_text)
     header = {
+        "InvoiceId": invoice_id,
         "CGST_total": cgst,
         "SGST_total": sgst,
         "IGST_total": igst,
