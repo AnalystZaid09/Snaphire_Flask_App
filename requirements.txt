@@ -25,6 +25,7 @@ pypdf
 PyPDF2>=3.0.0
 azure-ai-documentintelligence>=1.0.0b1
 fuzzywuzzy>=0.18.0
+rapidfuzz>=3.5.0
 python-Levenshtein>=0.23.0
 
 # Networking & Production
