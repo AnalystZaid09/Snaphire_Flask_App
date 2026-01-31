@@ -43,8 +43,8 @@ python -m streamlit run streamlit_app.py \
 echo "🏗️ Starting Flask Portal on port $FLASK_PORT..."
 exec gunicorn --bind 0.0.0.0:$FLASK_PORT \
      --workers 1 \
-     --threads 2 \
-     --timeout 300 \
+     --threads 1 \
+     --timeout 600 \
      --access-logfile - \
      --error-logfile - \
      index:app
