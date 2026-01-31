@@ -42,12 +42,15 @@ python -m streamlit run streamlit_app.py \
 echo "⏳ Waiting for Streamlit on port $STREAMLIT_PORT..."
 sleep 5
 
-# 5. Start Flask (Internal via Gunicorn)
+# 5. Start Flask (Internal via Gunicorn - Memory Optimized)
 echo "🏗️ Starting Flask Portal on port $FLASK_PORT..."
 gunicorn --bind 0.0.0.0:$FLASK_PORT \
      --workers 1 \
      --threads 1 \
-     --timeout 600 \
+     --timeout 120 \
+     --preload \
+     --max-requests 100 \
+     --max-requests-jitter 10 \
      --access-logfile - \
      --error-logfile - \
      index:app
