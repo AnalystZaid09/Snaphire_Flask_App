@@ -39,5 +39,12 @@ python -m streamlit run streamlit_app.py \
     --browser.gatherUsageStats=false &
 
 # 4. Start Flask (Internal via Gunicorn)
+# Limit to 1 worker and 2 threads to save RAM for Streamlit
 echo "🏗️ Starting Flask Portal on port $FLASK_PORT..."
-gunicorn --bind 0.0.0.0:$FLASK_PORT --timeout 120 index:app
+exec gunicorn --bind 0.0.0.0:$FLASK_PORT \
+     --workers 1 \
+     --threads 2 \
+     --timeout 300 \
+     --access-logfile - \
+     --error-logfile - \
+     index:app

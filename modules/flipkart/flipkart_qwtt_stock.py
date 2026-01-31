@@ -57,30 +57,72 @@ def to_excel(df, sheet_name):
         df.to_excel(writer, sheet_name=sheet_name, index=False)
     return output.getvalue()
 
-def process_flipkart_data(sales_df, pm_df, inventory_df):
-    """Process Flipkart data and return sales and inventory reports"""
+def process_flipkart_data(sales_file, pm_file, inventory_file):
+    """Process Flipkart data sequentially to minimize memory usage"""
     
-    # Process Sales Report
-    # Filter only Flipkart marketplace
-    sales_df = sales_df[sales_df["Marketplace"].str.strip().str.lower() == "flipkart"]
-    
-    # Pivot: SKU wise sales quantity
-    sales_pivot = (
-        sales_df
-        .groupby("SKU", as_index=False)["Quantity"]
-        .sum()
-        .rename(columns={"Quantity": "Sales Qty"})
-    )
-    
-    # Create lookup dictionaries from PM file
-    fsn_map = pm_df.set_index("EasycomSKU")["FNS"].to_dict()
-    vendor_sku_map = pm_df.set_index("EasycomSKU")["Vendor SKU Codes"].to_dict()
-    brand_map = pm_df.set_index("EasycomSKU")["Brand"].to_dict()
-    manager_map = pm_df.set_index("EasycomSKU")["Brand Manager"].to_dict()
-    product_map = pm_df.set_index("EasycomSKU")["Product Name"].to_dict()
-    cp_map = pm_df.set_index("EasycomSKU")["CP"].to_dict()
-    
-    # Map data to sales pivot
+    # 1. Process Sales Report first
+    with st.spinner("Processing Sales data..."):
+        sales_df = pd.read_csv(
+            sales_file, 
+            usecols=["Marketplace", "SKU", "Quantity"],
+            dtype={"Marketplace": "category", "SKU": "str", "Quantity": "float32"}
+        )
+        
+        # Filter and Aggregate Sales
+        sales_df = sales_df[sales_df["Marketplace"].str.strip().str.lower() == "flipkart"]
+        sales_pivot = (
+            sales_df
+            .groupby("SKU", as_index=False)["Quantity"]
+            .sum()
+            .rename(columns={"Quantity": "Sales Qty"})
+        )
+        
+        # Clear large sales_df immediately
+        del sales_df
+        gc.collect()
+
+    # 2. Process PM File and create lookups
+    with st.spinner("Loading Product Master..."):
+        pm_cols = ["EasycomSKU", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager", "Product Name", "CP"]
+        if pm_file.name.endswith('.csv'):
+            pm_df = pd.read_csv(pm_file, usecols=pm_cols)
+        else:
+            pm_df = pd.read_excel(pm_file, usecols=pm_cols)
+        
+        pm_df = pm_df.drop_duplicates(subset=["EasycomSKU"])
+        
+        # Convert to dictionaries for fast lookup and delete dataframe
+        fsn_map = pm_df.set_index("EasycomSKU")["FNS"].to_dict()
+        vendor_sku_map = pm_df.set_index("EasycomSKU")["Vendor SKU Codes"].to_dict()
+        brand_map = pm_df.set_index("EasycomSKU")["Brand"].to_dict()
+        manager_map = pm_df.set_index("EasycomSKU")["Brand Manager"].to_dict()
+        product_map = pm_df.set_index("EasycomSKU")["Product Name"].to_dict()
+        cp_map = pm_df.set_index("EasycomSKU")["CP"].to_dict()
+        
+        del pm_df
+        gc.collect()
+
+    # 3. Process Inventory sequentially
+    with st.spinner("Processing Inventory..."):
+        inventory_df = pd.read_csv(
+            inventory_file,
+            usecols=["sku", "old_quantity"],
+            dtype={"sku": "str", "old_quantity": "float32"}
+        )
+        
+        # Clean SKU and Pivot
+        inventory_df["sku"] = inventory_df["sku"].str.replace("`", "", regex=False).str.strip()
+        inventory_pivot = (
+            inventory_df
+            .groupby("sku", as_index=False)["old_quantity"]
+            .sum()
+            .rename(columns={"old_quantity": "Stock"})
+        )
+        
+        del inventory_df
+        gc.collect()
+
+    # 4. Assemble Sales Report using lookups (RAM Efficient)
     sales_pivot["FNS"] = sales_pivot["SKU"].map(fsn_map)
     sales_pivot["Vendor SKU Codes"] = sales_pivot["SKU"].map(vendor_sku_map)
     sales_pivot["Brand"] = sales_pivot["SKU"].map(brand_map)
@@ -88,40 +130,18 @@ def process_flipkart_data(sales_df, pm_df, inventory_df):
     sales_pivot["Product Name"] = sales_pivot["SKU"].map(product_map)
     sales_pivot["CP"] = pd.to_numeric(sales_pivot["SKU"].map(cp_map), errors='coerce').round(2)
     
-    # Process Inventory Report
-    # Clean SKU column - remove backticks and trim
-    inventory_df["sku"] = (
-        inventory_df["sku"]
-        .astype(str)
-        .str.replace("`", "", regex=False)
-        .str.strip()
-    )
-    
-    # Pivot: SKU wise total stock
-    inventory_pivot = (
-        inventory_df
-        .groupby("sku", as_index=False)["old_quantity"]
-        .sum()
-        .rename(columns={"old_quantity": "Stock"})
-    )
-    
-    # Add stock to sales report
+    # Add Stock to Sales
     stock_map = inventory_pivot.set_index("sku")["Stock"].to_dict()
     sales_pivot["Stock"] = sales_pivot["SKU"].map(stock_map)
-    
-    # Calculate CP as Per Sales Qty for sales report
     sales_pivot["CP as Per Sales Qty"] = (sales_pivot["CP"] * sales_pivot["Sales Qty"]).round(2)
     
-    # Reorder columns for sales report
     sales_report = sales_pivot[[
         "SKU", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager",
         "Product Name", "Sales Qty", "CP", "Stock", "CP as Per Sales Qty"
     ]]
-    
-    # Process Inventory Report
+
+    # 5. Assemble Inventory Report using lookups
     inventory_report = inventory_pivot.copy()
-    
-    # Map data to inventory report
     inventory_report["FNS"] = inventory_report["sku"].map(fsn_map)
     inventory_report["Vendor SKU Codes"] = inventory_report["sku"].map(vendor_sku_map)
     inventory_report["Brand"] = inventory_report["sku"].map(brand_map)
@@ -129,15 +149,11 @@ def process_flipkart_data(sales_df, pm_df, inventory_df):
     inventory_report["Product Name"] = inventory_report["sku"].map(product_map)
     inventory_report["CP"] = pd.to_numeric(inventory_report["sku"].map(cp_map), errors='coerce').round(2)
     
-    # Add sales qty to inventory report
     sale_qty_inv_map = sales_pivot.set_index("SKU")["Sales Qty"].to_dict()
     inventory_report["Sales Qty"] = inventory_report["sku"].map(sale_qty_inv_map)
-    
-    # Calculate CP as Per Stock and CP as Per Sales Qty for inventory report
     inventory_report["CP as Per Stock"] = (inventory_report["CP"] * inventory_report["Stock"]).round(2)
     inventory_report["CP as Per Sales Qty"] = (inventory_report["CP"] * inventory_report["Sales Qty"]).round(2)
     
-    # Reorder columns for inventory report
     inventory_report = inventory_report[[
         "sku", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager",
         "Product Name", "Stock", "Sales Qty", "CP", "CP as Per Stock", "CP as Per Sales Qty"
@@ -145,44 +161,14 @@ def process_flipkart_data(sales_df, pm_df, inventory_df):
     
     return sales_report, inventory_report
 
-# Main app logic
 if sales_file and pm_file and inventory_file and generate_button:
     try:
         container = st.container()
-        with st.spinner("Processing files..."):
-            # 1. Read Sales File (Optimized)
-            sales_df = pd.read_csv(
-                sales_file, 
-                usecols=["Marketplace", "SKU", "Quantity"],
-                dtype={"Marketplace": "category", "SKU": "str", "Quantity": "float32"}
-            )
-            
-            # 2. Read PM File (Optimized)
-            pm_cols = ["EasycomSKU", "FNS", "Vendor SKU Codes", "Brand", "Brand Manager", "Product Name", "CP"]
-            if pm_file.name.endswith('.csv'):
-                pm_df = pd.read_csv(pm_file, usecols=pm_cols)
-            else:
-                pm_df = pd.read_excel(pm_file, usecols=pm_cols)
-            pm_df = pm_df.drop_duplicates(subset=["EasycomSKU"])
-            
-            # 3. Read Inventory File (Optimized)
-            inventory_df = pd.read_csv(
-                inventory_file,
-                usecols=["sku", "old_quantity"],
-                dtype={"sku": "str", "old_quantity": "float32"}
-            )
-            
-            gc.collect()
         
-        # Process data
-        with st.spinner("Generating reports..."):
-            sales_report, inventory_report = process_flipkart_data(sales_df, pm_df, inventory_df)
-            
-            # Clear raw dataframes to save RAM
-            del sales_df
-            del pm_df
-            del inventory_df
-            gc.collect()
+        # Process data sequentially
+        sales_report, inventory_report = process_flipkart_data(sales_file, pm_file, inventory_file)
+        
+        st.success("✅ Reports generated successfully!")
         
         st.success("✅ Reports generated successfully!")
         
