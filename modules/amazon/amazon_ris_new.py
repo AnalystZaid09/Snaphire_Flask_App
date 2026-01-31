@@ -147,69 +147,92 @@ with st.sidebar:
         
         if st.button("🔄 Process Data", use_container_width=True):
             if ris_file and state_fc_file and purchase_file:
-                with st.spinner("Processing data..."):
+                with st.spinner("Processing data (Extreme Memory Optimization)..."):
                     try:
-                        # Read files
-                        ris_df = pd.read_csv(ris_file)
-                        state_fc_df = pd.read_excel(state_fc_file, sheet_name="Sheet2")
-                        purchase_df = pd.read_excel(purchase_file)
+                        # 1. READ MINIMAL COLUMNS
+                        # RIS Data (usually the largest)
+                        ris_cols = ["Amazon Order Id", "Merchant SKU", "Shipped Quantity", "Shipping State", "FC", "Purchase Date", "Payments Date"]
+                        ris_df = pd.read_csv(ris_file, usecols=lambda x: x in ris_cols)
                         
-                        # Rename columns in state_fc_df
-                        state_fc_df = state_fc_df.rename(columns={
-                            state_fc_df.columns[0]: "FC",
-                            state_fc_df.columns[1]: "FC State",
-                            state_fc_df.columns[2]: "FC Cluster",
-                            state_fc_df.columns[3]: "FC State Cluster"
-                        })
+                        # State FC Mapping
+                        state_fc_cols = ["FC", "State", "Cluster", "State Cluster"] # Assuming these based on line 158
+                        # Need to check actual column indices since it was using state_fc_df.columns[0-3]
+                        # Let's read first few rows to get column names safely
+                        temp_fc = pd.read_excel(state_fc_file, sheet_name="Sheet2", nrows=0)
+                        fc_actual_cols = temp_fc.columns.tolist()[:4]
+                        state_fc_df = pd.read_excel(state_fc_file, sheet_name="Sheet2", usecols=fc_actual_cols)
+                        del temp_fc
+                        
+                        # Purchase/Product Master
+                        pur_cols = ["Amazon Sku Name", "ASIN", "Vendor SKU Codes", "Brand Manager", "Brand", "Product Name"]
+                        purchase_df = pd.read_excel(purchase_file, usecols=pur_cols)
+                        
+                        # Aggressive GC
+                        gc.collect()
+
+                        # 2. RENAME & CATEGORIZE FC DATA
+                        state_fc_df.columns = ["FC", "FC State", "FC Cluster", "FC State Cluster"]
+                        for col in ["FC State", "FC Cluster", "FC State Cluster"]:
+                            state_fc_df[col] = state_fc_df[col].astype("category")
                         
                         # Create mappings
                         fc_state_map = dict(zip(state_fc_df["FC"], state_fc_df["FC State"]))
                         fc_cluster_map = dict(zip(state_fc_df["FC"], state_fc_df["FC Cluster"]))
                         fc_state_cluster_map = dict(zip(state_fc_df["FC"], state_fc_df["FC State Cluster"]))
+                        del state_fc_df
                         
-                        # Map FC data to RIS
-                        ris_df["FC State"] = ris_df["FC"].map(fc_state_map)
-                        ris_df["FC Cluster"] = ris_df["FC"].map(fc_cluster_map)
-                        ris_df["FC State Cluster"] = ris_df["FC"].map(fc_state_cluster_map)
+                        # 3. MAP FC DATA TO RIS
+                        ris_df["FC State"] = ris_df["FC"].map(fc_state_map).astype("category")
+                        ris_df["FC Cluster"] = ris_df["FC"].map(fc_cluster_map).astype("category")
+                        ris_df["FC State Cluster"] = ris_df["FC"].map(fc_state_cluster_map).astype("category")
                         
-                        # Normalize SKUs
+                        del fc_state_map, fc_cluster_map, fc_state_cluster_map
+                        gc.collect()
+
+                        # 4. NORMALIZE & MAP PRODUCT DATA
                         purchase_df["Amazon Sku Name"] = purchase_df["Amazon Sku Name"].apply(normalize_sku)
                         ris_df["Merchant SKU"] = ris_df["Merchant SKU"].apply(normalize_sku)
                         
-                        # Create product mappings
-                        asin_map = dict(zip(purchase_df["Amazon Sku Name"], purchase_df["ASIN"]))
-                        vendor_sku_map = dict(zip(purchase_df["Amazon Sku Name"], purchase_df["Vendor SKU Codes"]))
-                        brand_manager_map = dict(zip(purchase_df["Amazon Sku Name"], purchase_df["Brand Manager"]))
+                        # Map Brand first (most important for pivots)
                         brand_map = dict(zip(purchase_df["Amazon Sku Name"], purchase_df["Brand"]))
-                        product_name_map = dict(zip(purchase_df["Amazon Sku Name"], purchase_df["Product Name"]))
+                        ris_df["Brand"] = ris_df["Merchant SKU"].map(brand_map).astype("category")
+                        del brand_map
                         
-                        # Map product data to RIS
-                        ris_df["ASIN"] = ris_df["Merchant SKU"].map(asin_map)
-                        ris_df["Vendor SKU"] = ris_df["Merchant SKU"].map(vendor_sku_map)
-                        ris_df["Brand"] = ris_df["Merchant SKU"].map(brand_map)
-                        ris_df["Brand Manager"] = ris_df["Merchant SKU"].map(brand_manager_map)
-                        ris_df["Product Name"] = ris_df["Merchant SKU"].map(product_name_map)
+                        # Map other product data
+                        ris_df["ASIN"] = ris_df["Merchant SKU"].map(dict(zip(purchase_df["Amazon Sku Name"], purchase_df["ASIN"])))
+                        ris_df["Vendor SKU"] = ris_df["Merchant SKU"].map(dict(zip(purchase_df["Amazon Sku Name"], purchase_df["Vendor SKU Codes"])))
+                        ris_df["Brand Manager"] = ris_df["Merchant SKU"].map(dict(zip(purchase_df["Amazon Sku Name"], purchase_df["Brand Manager"]))).astype("category")
+                        ris_df["Product Name"] = ris_df["Merchant SKU"].map(dict(zip(purchase_df["Amazon Sku Name"], purchase_df["Product Name"])))
                         
-                        # Normalize shipping state
+                        del purchase_df
+                        gc.collect()
+
+                        # 5. CALCULATE RIS STATUS
+                        # Optimize shipping state normalization by using a vectorized approach if possible
+                        # or at least clean up immediately
                         ris_df["Shipping State Corrected"] = ris_df.apply(
-                            lambda x: normalize_shipping_state(x["Shipping State"], x["FC State"], STATE_RULES),
+                            lambda x: normalize_shipping_state(str(x["Shipping State"]), str(x["FC State"]), STATE_RULES),
                             axis=1
-                        )
+                        ).astype("category")
                         
-                        # Calculate RIS Status
                         ris_df["RIS Status"] = np.where(
                             ris_df["Shipping State Corrected"].str.upper().str.strip() == 
                             ris_df["FC State"].str.upper().str.strip(),
                             "RIS",
                             "Non RIS"
                         )
+                        ris_df["RIS Status"] = ris_df["RIS Status"].astype("category")
                         
-                        # Convert all object columns to string to avoid PyArrow serialization errors
+                        # Downcast Shipped Quantity
+                        if "Shipped Quantity" in ris_df.columns:
+                            ris_df["Shipped Quantity"] = pd.to_numeric(ris_df["Shipped Quantity"], errors='coerce').fillna(0).astype("int32")
+
+                        # Convert objects to string for Streamlit/Arrow compatibility
                         for col in ris_df.columns:
                             if ris_df[col].dtype == 'object':
                                 ris_df[col] = ris_df[col].astype(str)
                         
-                        # Store processed data
+                        # Store processed data (this is the big one in session state)
                         st.session_state.processed_data = ris_df
                         
                         # Generate all pivots
@@ -418,82 +441,77 @@ with st.sidebar:
         
         if st.button("🔄 Process Manager Data", use_container_width=True, key='manager_process'):
             if ris_week_file and pm_file:
-                with st.spinner("Processing Manager data..."):
+                with st.spinner("Processing Manager data (Extreme Memory Optimization)..."):
                     try:
-                        # Read RIS Week file (support both CSV and Excel)
+                        # 1. READ MINIMAL COLUMNS
+                        # Read RIS Week file columns first
+                        temp_ris = pd.read_csv(ris_week_file, nrows=0) if ris_week_file.name.endswith('.csv') else pd.read_excel(ris_week_file, nrows=0)
+                        ris_all_cols = temp_ris.columns.tolist()
+                        del temp_ris
+                        
+                        # Identify columns for usecols
+                        target_cols = []
+                        for col in ris_all_cols:
+                            clow = col.lower().replace(" ", "").replace("_", "")
+                            if clow in ['total', 'totalunits', 'totalqty', 'totalquantity', 'totalunit',
+                                       'risunits', 'ris', 'risqty', 'risquantity', 'risunit', 'ris_units',
+                                       'custcluster', 'cluster', 'customercluster', 'asin', 'brand', 
+                                       'merchantbrandname', 'brandname']:
+                                target_cols.append(col)
+                        
+                        # Read RIS Week file with usecols
                         if ris_week_file.name.endswith('.csv'):
-                            ris_week_df = pd.read_csv(ris_week_file)
+                            ris_week_df = pd.read_csv(ris_week_file, usecols=target_cols)
                         else:
-                            ris_week_df = pd.read_excel(ris_week_file)
+                            ris_week_df = pd.read_excel(ris_week_file, usecols=target_cols)
                         
-                        # Read PM file
-                        pm_df = pd.read_excel(pm_file)
+                        # Read PM file minimal
+                        pm_cols = ["ASIN", "Brand", "Brand Manager", "Vendor SKU Codes"]
+                        pm_df = pd.read_excel(pm_file, usecols=lambda x: x in pm_cols)
                         
-                        # Calculate Non RIS = total - ris_units
-                        # First, check which columns exist for total and ris_units
+                        gc.collect()
+
+                        # 2. CALCULATE NON RIS & OPTIMIZE TYPES
                         total_col = None
                         ris_col = None
                         
-                        # Look for total column (case-insensitive search)
                         for col in ris_week_df.columns:
                             col_lower = col.lower().replace(" ", "").replace("_", "")
                             if col_lower in ['total', 'totalunits', 'totalqty', 'totalquantity']:
                                 total_col = col
-                                break
-                        
-                        # Look for RIS units column
-                        for col in ris_week_df.columns:
-                            col_lower = col.lower().replace(" ", "").replace("_", "")
                             if col_lower in ['risunits', 'ris', 'risqty', 'risquantity', 'ris_units']:
                                 ris_col = col
-                                break
                         
                         if total_col and ris_col:
-                            # Convert to numeric and calculate Non RIS
-                            ris_week_df[total_col] = pd.to_numeric(ris_week_df[total_col], errors='coerce').fillna(0)
-                            ris_week_df[ris_col] = pd.to_numeric(ris_week_df[ris_col], errors='coerce').fillna(0)
-                            ris_week_df["Non RIS"] = ris_week_df[total_col] - ris_week_df[ris_col]
-                        else:
-                            st.warning(f"⚠️ Could not find total or ris_units columns. Found columns: {list(ris_week_df.columns)}")
+                            ris_week_df[total_col] = pd.to_numeric(ris_week_df[total_col], errors='coerce').fillna(0).astype("int32")
+                            ris_week_df[ris_col] = pd.to_numeric(ris_week_df[ris_col], errors='coerce').fillna(0).astype("int32")
+                            ris_week_df["Non RIS"] = (ris_week_df[total_col] - ris_week_df[ris_col]).astype("int32")
                         
-                        # Create mappings from PM file using ASIN
-                        # Find ASIN column in both dataframes (case-insensitive)
-                        pm_asin_col = None
-                        ris_asin_col = None
+                        # 3. MAP PRODUCT DATA
+                        # Find ASIN column
+                        pm_asin_col = next((c for c in pm_df.columns if c.lower() == 'asin'), None)
+                        ris_asin_col = next((c for c in ris_week_df.columns if c.lower() == 'asin'), None)
                         
-                        for col in pm_df.columns:
-                            if col.lower() == 'asin':
-                                pm_asin_col = col
-                                break
-                        
-                        for col in ris_week_df.columns:
-                            if col.lower() == 'asin':
-                                ris_asin_col = col
-                                break
-                        
-                        if pm_asin_col:
+                        if pm_asin_col and ris_asin_col:
                             pm_df[pm_asin_col] = pm_df[pm_asin_col].astype(str).str.strip().str.upper()
-                        
-                        if ris_asin_col:
                             ris_week_df[ris_asin_col] = ris_week_df[ris_asin_col].astype(str).str.strip().str.upper()
                         
-                            # Create mappings
-                            brand_map = dict(zip(pm_df[pm_asin_col], pm_df["Brand"])) if "Brand" in pm_df.columns else {}
-                            brand_manager_map = dict(zip(pm_df[pm_asin_col], pm_df["Brand Manager"])) if "Brand Manager" in pm_df.columns else {}
-                            vendor_sku_map = dict(zip(pm_df[pm_asin_col], pm_df["Vendor SKU Codes"])) if "Vendor SKU Codes" in pm_df.columns else {}
+                            # Apply mappings and categorize
+                            for target, source in [("Brand", "Brand"), ("Brand Manager", "Brand Manager"), ("Vendor SKU Codes", "Vendor SKU Codes")]:
+                                if source in pm_df.columns:
+                                    mapping = dict(zip(pm_df[pm_asin_col], pm_df[source]))
+                                    ris_week_df[target] = ris_week_df[ris_asin_col].map(mapping).astype("category")
+                                    del mapping
                             
-                            ris_week_df["Brand"] = ris_week_df[ris_asin_col].map(brand_map)
-                            ris_week_df["Brand Manager"] = ris_week_df[ris_asin_col].map(brand_manager_map)
-                            ris_week_df["Vendor SKU Codes"] = ris_week_df[ris_asin_col].map(vendor_sku_map)
-                        else:
-                            st.warning(f"⚠️ ASIN column not found in RIS Week file. Found columns: {list(ris_week_df.columns)}")
+                        del pm_df
+                        gc.collect()
                         
-                        # Convert all object columns to string
+                        # Convert other objects to string for Arrow
                         for col in ris_week_df.columns:
                             if ris_week_df[col].dtype == 'object':
                                 ris_week_df[col] = ris_week_df[col].astype(str)
                         
-                        # Store the processed data in session state
+                        # Store in session state
                         st.session_state.manager_data = ris_week_df
                         
                         # Generate pivot tables for Manager
@@ -676,7 +694,7 @@ if st.session_state.processed_data is not None:
             st.metric("RIS %", f"{ris_percent:.2f}%")
         
         st.markdown("---")
-        st.dataframe(df, use_container_width=True, height=400)
+        st.dataframe(df, width="stretch", height=400)
         
         download_module_report(
             df=df,
@@ -692,7 +710,7 @@ if st.session_state.processed_data is not None:
         st.header("Brand-wise RIS Analysis")
         if 'brand_wise' in st.session_state.all_results:
             df = st.session_state.all_results['brand_wise']
-            st.dataframe(df, use_container_width=True, height=400)
+            st.dataframe(df, width="stretch", height=400)
             download_module_report(
                 df=df,
                 module_name=MODULE_NAME,
@@ -707,7 +725,7 @@ if st.session_state.processed_data is not None:
         st.header("ASIN-wise RIS Analysis")
         if 'asin_wise' in st.session_state.all_results:
             df = st.session_state.all_results['asin_wise']
-            st.dataframe(df, use_container_width=True, height=400)
+            st.dataframe(df, width="stretch", height=400)
             download_module_report(
                 df=df,
                 module_name=MODULE_NAME,
@@ -722,7 +740,7 @@ if st.session_state.processed_data is not None:
         st.header("Cluster-wise RIS Analysis")
         if 'cluster_wise' in st.session_state.all_results:
             df = st.session_state.all_results['cluster_wise']
-            st.dataframe(df, use_container_width=True, height=400)
+            st.dataframe(df, width="stretch", height=400)
             download_module_report(
                 df=df,
                 module_name=MODULE_NAME,
@@ -737,7 +755,7 @@ if st.session_state.processed_data is not None:
         st.header("Cluster-Brand RIS Analysis")
         if 'cluster_brand' in st.session_state.all_results:
             df = st.session_state.all_results['cluster_brand']
-            st.dataframe(df, use_container_width=True, height=400)
+            st.dataframe(df, width="stretch", height=400)
             download_module_report(
                 df=df,
                 module_name=MODULE_NAME,
@@ -752,7 +770,7 @@ if st.session_state.processed_data is not None:
         st.header("State Cluster RIS Analysis")
         if 'state_cluster' in st.session_state.all_results:
             df = st.session_state.all_results['state_cluster']
-            st.dataframe(df, use_container_width=True, height=400)
+            st.dataframe(df, width="stretch", height=400)
             download_module_report(
                 df=df,
                 module_name=MODULE_NAME,
@@ -813,7 +831,7 @@ elif st.session_state.manager_data is not None:
                 st.metric("Total RIS", f"{ris_total:,.0f}")
         
         st.markdown("---")
-        st.dataframe(df, use_container_width=True, height=500)
+        st.dataframe(df, width="stretch", height=500)
         
         st.download_button(
             label="📥 Download Manager RIS Data (Excel)",
@@ -827,7 +845,7 @@ elif st.session_state.manager_data is not None:
         st.header("🏷️ Brand-wise Analysis")
         if 'brand_wise' in st.session_state.manager_results:
             df = st.session_state.manager_results['brand_wise']
-            st.dataframe(df, use_container_width=True, height=400)
+            st.dataframe(df, width="stretch", height=400)
             st.download_button(
                 label="📥 Download Brand-wise Analysis (Excel)",
                 data=to_excel(df),
@@ -842,7 +860,7 @@ elif st.session_state.manager_data is not None:
         st.header("🔖 ASIN-wise Analysis")
         if 'asin_wise' in st.session_state.manager_results:
             df = st.session_state.manager_results['asin_wise']
-            st.dataframe(df, use_container_width=True, height=400)
+            st.dataframe(df, width="stretch", height=400)
             st.download_button(
                 label="📥 Download ASIN-wise Analysis (Excel)",
                 data=to_excel(df),
@@ -857,7 +875,7 @@ elif st.session_state.manager_data is not None:
         st.header("🏢 Cluster-wise Analysis")
         if 'cluster_wise' in st.session_state.manager_results:
             df = st.session_state.manager_results['cluster_wise']
-            st.dataframe(df, use_container_width=True, height=400)
+            st.dataframe(df, width="stretch", height=400)
             st.download_button(
                 label="📥 Download Cluster-wise Analysis (Excel)",
                 data=to_excel(df),
